@@ -58,15 +58,15 @@ java Test
 
      1. 先移除右边的出问题的java代码，然后再将有问题的代码加上**Sources**
 
-        ![image-20200401185924869](img/image-20200401185924869.png)
+        
 
      2. 在Modules设置path里勾选”Inherit project compilepath” ，如果已经勾选则不管它
 
-        ![image-20200401190112670](img/image-20200401190112670.png)
+        
 
      3. 设置Project中的”Project compiler output”，路径设置为你的项目下的out文件夹，这个文件夹是用来存储编译后的 .class 文件
 
-        ![image-20200401190240958](img/image-20200401190240958.png) 
+        
 
 ## 3.2 注释
 
@@ -193,11 +193,14 @@ public class Student
 
    - Math.sqrt(x);		//对x开根号 
    - Math.pow(x,a);    //求x的a次方
+   - Math.abs(x);        //对x求绝对值
+   - Math.ceil(x);        //x向上取整
+   - Math.floor(x);     //x向下取整
    - Math.round(x);    //对x四舍五入，返回结果类型为long
    - Math.PI;                //∏=3.14159265358979323846
    - Math.E;                  //e=2.7182818284590452354
 
-3. floorMod
+3. floorMod，floorDiv
 
 4. **注意**，在Math类中，为了达到最快的性能，所有的方法都使用计算机中的浮点运算，所以会导致有时计算不准确；**但是如果结果的准确性更加重要的话**，那么就应该使用StrictMath类，才能得到准确的运算结果；
 
@@ -251,7 +254,7 @@ public class Student
 
 4. String为不可变字符串，java中不可变字符串的优点：编译器可以让字符串共享
 
-5. java中的字符串不像c++中一样等于一个char数组，而是类似于char*指针，**因为java有自动垃圾回收机制**，所以尽管是将字符串放置在堆内存中，但是程序员可以不用管它。
+5. java中的字符串不像c++中一样等于一个char数组，而是类似于char*指针，**因为java有自动垃圾回收机制**，所以尽管是将字符串放置在堆内存中，但是程序员可以不用管它，虚拟机会自动回收垃圾。
 
 6. **检测字符串是否相等**：
 
