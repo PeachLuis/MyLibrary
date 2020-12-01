@@ -246,19 +246,39 @@ public class Student
 
 ## 3.6 字符串
 
-1. 子串
+### 3.7.1 基础知识
 
-2. 无论
+1. String和StingBuilder的API文档
 
-3. 拼接，String对象可以互相拼接；字符串和非字符串的值进行拼接，会将后者转换成字符串（即，任何一个java对象都可以转换成字符串）
+2. Java没有内置的字符串类型，而是在标准Java类库中提供了一个预定义类——String，每个用双引号括起来的字符串都是String类的一个实例。
 
-4. String为不可变字符串，java中不可变字符串的优点：编译器可以让字符串共享
+3. String类的subString（）方法可以得到一个字符串的子串，得到的子串即使内容和另外一个字符串内容相同，但是`==`得到的使false，不过使用equals方法得到的还是true，所以字符串的比较不能用`==`，必须用equals方法。
 
-5. java中的字符串不像c++中一样等于一个char数组，而是类似于char*指针，**因为java有自动垃圾回收机制**，所以尽管是将字符串放置在堆内存中，但是程序员可以不用管它，虚拟机会自动回收垃圾。
+   ```java
+   String s = "abcd";
+   //普通方法，接受两个整型，得到s中下标从0到2的子串，包括0不包括2
+   String temp1 = s.subString(0,2);	//temp1 = "ab"
+   //接受一个整型，得到从该下标到结尾的子串
+   String temp2 = s.subString(1);		//temp2 = "bcd"
+   ```
 
-6. **检测字符串是否相等**：
+4. 拼接，String对象可以互相拼接，使用`+`连接，拼接得到的字符串又是一个新的String实例；字符串和非字符串的值进行拼接，会将后者转换成字符串（即，任何一个java对象都可以转换成字符串）；
+   如果需要把多个字符串放在一起，并用一个分隔符分开，可以使用join方法
 
-   1.**必须使用equals方法，不能使用“==”；**
+   ```java
+   String lal = String.join("/", "S", "M", "L");
+   System.out.println(lal);
+   //得到；S/M/L
+   ```
+
+5. String为不可变字符串，如果修改字符串就只能使用拼接，这样会造成性能低下，不过String被设计为如此不让修改，如果想要高效地实现修改字符串，可以使用StringBuilder，不可变字符串的优点：编译器可以让字符串共享；
+
+6. java中的字符串不像c++中一样等于一个char数组，而是类似于char*指针，**因为java有自动垃圾回收机制**，所以尽管是将字符串放置在堆内存中，但是程序员可以不用管它，虚拟机会自动回收垃圾。
+
+7. **检测字符串是否相等**：
+
+   1. 想要监测两个字符串是否相等，而不区分大小写，可以使用equalsIgnoreCase方法；
+   2. **必须使用`equals`方法，不能使用`==`；**
 
    ​	如果比较的是两个值相同的String类型字符串用“==“结果为true，这是因为String字符串是共享的；如果换	成”+“或者substring，得到的字符串不是共享的，即使值相同，结果也会是false；
 
@@ -285,9 +305,7 @@ public class Student
    "abc" == "abcd".substring(0, 3)：false
    ```
 
-   
-
-7. 空串与Null串
+8. 空串与Null串
 
    1. 空串判断：
 
@@ -308,9 +326,28 @@ public class Student
       	if(str != null && str.length() != 0)	
       ```
 
-8. 码点与代码单元：大多数常用的Unicode字符使用一个代码单元就可以表示，而辅助字符需要一对代码单元表示
+9. 码点与代码单元：大多数常用的Unicode字符使用一个代码单元就可以表示，而辅助字符需要一对代码单元表示，如使用 UTF-16 编码表示字符⑪(U+1D546) 需要两个代码单元。调用 char ch = sentence.charAt(l) 返回的不是一个空格，而是⑪的第二个代码单元。为了避免这个问题， 不要使用 char 类型。 这太底层了。；
 
-9. **使用可变长度的字符串的两个类**：（对象的值能进行多次修改，而且不产生新的未使用对象）
+   **注意，length方法得到的是代码单元的数量。**
+
+   码点即是字符的Unicode编码，如a的码点为为97；码点可以通过s.codePointAt方法得到，也可以通过字符强转为int类型得到，但是一种更方便得到码点的方法是使用codePoints方法
+
+   ```java
+   String s = "abcd";
+   int[] co = s.codePoints().toArray();
+   System.out.println(Arrays.toString(co));
+   //输出：[97, 98, 99, 100]
+   ```
+
+   反之，将一个码点数组转换为一个字符串，可以使用构造函数
+
+   ```java
+   String str = new String(codePoints,0,codePoints.length);
+   ```
+
+   
+
+10. **使用可变长度的字符串的两个类**：（对象的值能进行多次修改，而且不产生新的未使用对象） 
 
    1. StringBuilder：用于**单线程**中编辑，**线程不安全（不能同步访问），但是速度快**
    2. StringBuffer：用于**多线程**，**线程安全，但速度较之较慢**
@@ -329,7 +366,47 @@ public class Student
 
    如诸多评论所指出的，我上面说，"用加号拼接字符串已经没有任何性能损失了"并不严谨，严格的说，如果没有循环的情况下，单行用加号拼接字符串是没有性能损失的，java 编译器会隐式的替换成 stringbuilder，但在有循环的情况下，编译器没法做到足够智能的替换，仍然会有不必要的性能损耗，因此，用循环拼接字符串的时候，还是老老实实的用 stringbuilder 吧。
 
+### 3.7.2 格式化
 
+1. 格式化输出可以使用System.out.printf，而如果用字符串存储，可以使用format方法。
+
+   ```java
+   String name = "luis";
+   int age = 20;
+   String s = String.format("Hello, %s. Next year, you'll be %d",name,age);
+   ```
+
+2. printf转换符
+   ![image-20201125154746341](img/image-20201125154746341.png)
+
+3. 用于printf的标志
+   ![image-20201125154817539](img/image-20201125154817539.png)
+
+4. 基于完整性的考虑， 下面简略地介绍 printf方法中日期与时间的格式化选项。在新代码中， 应当使用卷 II 第 6 章中介绍的 java.time 包的方法。 不过你可能会在遗留代码中看到 Date 类和相关的格式化选项。格式包括两个字母， 以 t 开始， 以表中的任意字母结束。
+
+   ![image-20201125160139632](img/image-20201125160139632.png)
+
+   如下代码：
+
+   ```java
+   System.out.printf("%tc",new Date());
+   //输出：周三 11月 25 15:51:38 CST 2020
+   ```
+
+5. 从表 3-7 可以看到， 某些格式只给出了指定 丨期的部分信息 t 。例如， 只有 FI 期 或 月 份 如 果需要多次对口期操作才能实现对每一部分进行格式化的 Q 的就太笨拙了为此， 可以采用一 个格式化的字符串指出要被格式化的参数索引。索引必须紧跟在 ％ 后面， 并以 $ 终止。 例如（提示，参数索引是从1开始），
+
+   ```java
+   System.out.printf("l$s %2$tB %2$te, %2$tY", "Due date:", new DateQ);
+   //打印：Due date: February 9, 2015 
+   ```
+
+    还可以选择使用 < 标志它指示前而格式说明中的参数将被再次使用。也就是说， 下列 语句将产生与前面语句同样的输出结果： 
+
+   ```java
+   System.out .printf("%s %tB %<te, %<tY", "Due date:", new DateO);
+   ```
+
+   
 
 ## 3.7 输入输出
 
@@ -408,11 +485,13 @@ public class Student
    	Scanner in = new Scanner("myfile.txt"); 
    ```
 
+   > 注释： 在这里指定了 UTF-8 字符编码， 这对于互联网上的文件很常见（不过并不是普遍 适用）。读取一个文本文件时，要知道它的字符编码—更多信息参见卷 n 第 2 章。如果 省略字符编码， 则会使用运行这个 Java 程序的机器的“ 默认编码”。 这不是一个好主意， 如果在不同的机器上运行这个程序， 可能会有不同的表现。
+
    2. 如果写入文件，需要构造一个PrintWriter对象，如下所示
 
    ```java
    	PrintWriter out = new PrintWriter("myfile.txt"，"UTF-8");
-   	//如果文件不存在，则创建该文件
+   	//如果文件不存在，则创建该文件，和Scanner不同
    ```
 
    注意：
@@ -423,9 +502,11 @@ public class Student
        	String dir = System.getProperty("user.dir");
        ```
 
-   2. 定位文件可以使用相对路径和绝对路径，如果觉得定位文件位置比较烦恼，可以使用绝对路径
+   2. 定位文件可以使用相对路径和绝对路径，如果觉得定位文件位置比较烦恼，可以使用绝对路径,例如：“ c:\\mydirectory\\ myfile.txt ” 或者“ /home/me/mydirectory/myfile.txt” 、
 
-   3. **如果用一个不存在的文件构造一个Scanner进行文件读取，或者用一个不能被创建的文件名构造一个PrintWriter，那么就会发生异常，而且Java编译器认为这些异常比”被0除“更严重，所以我们需要在方法中用throw子句标记，如下所示：**
+   3. 如果文件名中包含反斜杠符号，就要记住在每个反斜杠之前再加一个**额外的反斜杠**
+
+   4. **如果用一个不存在的文件构造一个Scanner进行文件读取，或者用一个不能被创建的文件名构造一个PrintWriter，那么就会发生异常，而且Java编译器认为这些异常比”被0除“更严重，所以我们需要在方法中用throw子句标记，如下所示：**
 
       ```java
       public static void main(String[] args) throw IOException
@@ -436,7 +517,9 @@ public class Student
       }
       ```
 
-    4. 当使用命令行方式启动一个程序时，可以利用Shell的重定向语法将任意文件关联到System.in和System.out，这样就不必担心处理IOException异常了
+    5. 可以构造一个只带有一个字符串参数的Scannner，但是这个Scannner将字符串解释为数据，而不是文件名。
+
+    6. 当使用命令行方式启动一个程序时，可以利用Shell的重定向语法将任意文件关联到System.in和System.out，这样就不必担心处理IOException异常了
 
        ```powershell
        	java MyProgram <myfile.txt> output.txt
@@ -457,7 +540,27 @@ public class Student
 ### 3.8.3 循环
 
 1. while语句
+
 2. do-while语句
+
+3. break；分为带标签和不带标签的写法，不带标签的会跳出当前循环，而带标签的会跳过标签下的循环语句；break只能跳出循环，不能跳进循环；
+
+   ```java
+   int counter = 0;
+   read_data:
+   while(true){
+       counter++;
+   	for(int i=0;i<10;i++){
+           counter++;
+           if(counter == 4){
+               break read_data;
+               //跳出while循环
+           }
+       }
+   }
+   ```
+
+4. continue；直接开始下一次循环；
 
 ### 3.8.4 确定循环
 
@@ -543,6 +646,15 @@ public class Student
    ```
 
 3. 不能使用人们熟悉的（+，-，*，/，%）操作符，因为是自定义的类，需要使用对应的方法进行运算；
+
+4. 常用的BigInteger构造方法：
+
+   ```java
+   BigInteger a = new BigInteger("111");
+   BigInteger b = BigInteger.valueOf(1);
+   ```
+
+   
 
 ## 3.10 数组
 
