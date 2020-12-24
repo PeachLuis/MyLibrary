@@ -190,3 +190,39 @@ allprojects {
 # **7. ViewModel更新后Activity和Fragment的写法
 
 详细博客待更新
+
+
+
+# 8. 加载Github上下载的项目，但是很多地方爆红
+
+要运行github上项目的基本思路：
+
+1. 下载项目到本地；
+2. 修改最外层build.gradle文件，修改classpath为本地下载了的文件，参看你本地机器其他可运行的项目（防止AS打开项目重新下载）；
+3. 修改gradle-wrapper.properties文件，修改distributionUrl参数为本地下载了的文件，同上（防止AS打开项目重新下载）；
+
+照理来说应该AS打开很快就能运行，但是我打开我以前的项目，项目Bundle等地方爆红，也无法运行，运行键是灰色；
+
+**解决办法：**修改内层即Model层的build.gradle文件，添加适配的目标版本为30，然后添加buildToolsVersion属性，如下：
+
+```gradle
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.1"
+    defaultConfig {
+        applicationId "com.example.luis.login"
+        minSdkVersion 21
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+```
+
