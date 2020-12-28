@@ -1045,7 +1045,7 @@ java中的类一般需要提供以下三项内容：
 1. 可以改变类的内部实现，除了该类的方法外，不会影响其他代码
 2. 更改器方法可以执行错误检查，然而直接对域进行赋值将不会进行这些处理，听起来就很糟糕
 
-> **警告：**不要编写返回引用可变对象的访问器方法，如果需要返回一个可变对象的引用，首先应该对它进行clone（）。具体内容参看P110
+> **!!!警告：**不要编写返回引用可变对象的访问器方法，如果需要返回一个可变对象的引用，首先应该对它进行clone（）。具体内容参看P110
 
 ### 4.3.7 基于类的访问权限
 
@@ -1460,6 +1460,10 @@ public class Student
 
    类路径所列出的目录和归档文件总是搜寻类的起始点
 
+**在Windows环境下，可以在命令行窗口中通过`set CLASSPATH = 文件地址`来设置，但是关闭命令行窗口后就失效了**
+
+**更好的方法是在环境变量中添加`CLASSPATH = .`进行全局的指定**
+
 总的来说：
 
 - JVM通过环境变量`classpath`决定搜索`class`的路径和顺序；
@@ -1613,13 +1617,13 @@ javadoc 从下面几个特性中抽取信息：
 
 # 第五章 继承
 
-利用继承，人马可以基于已存在的类构造一个新类。继承已存在的类就是复用（继承）这些类的方法和域。在此基础上，还可以添加一些新的方法和域，以满足新的需求。
+利用继承，可以基于已存在的类构造一个新类。继承已存在的类就是复用（继承）这些类的方法和域。在此基础上，还可以添加一些新的方法和域，以满足新的需求。
 
 反射是指在程序运行期间发现更多的类及其属性的能力。
 
 ## 5.1 类、超类、子类
 
-注释：在这一章中，我们使用员工和经理的传统示例，不过必须提醒你对这个例子要有所保留。在真是世界里，员工也可能会成为经理，所以你建模时可能希望经理也是员工，而不是一个子类。不过，在我们的例子中，假设公司里只有两类人：一些人一直是员工，另一些人一直是经理。
+注释：在这一章中，我们使用员工和经理的传统示例，不过必须提醒你对这个例子要有所保留。在真实世界里，员工也可能会成为经理，所以你建模时可能希望经理也是员工，而不是一个子类。不过，在我们的例子中，假设公司里只有两类人：一些人一直是员工，另一些人一直是经理。
 
 ### 5.1.1 定义子类
 
@@ -1690,7 +1694,7 @@ class Student extends Person
     public Student(String name, int num)
     {
 		super(name);
-        this.num = num;
+    	this.num = num;
     }
     
     public Student(int num)
@@ -1701,7 +1705,7 @@ class Student extends Person
     public static void main(String[] args)
     {
 		Student a = new Student("小王",2000);
-        Student b = new Student(1200);
+    	Student b = new Student(1200);
     }
 }
 
@@ -1740,7 +1744,15 @@ class Student extends Person
 
 有一个用来判断是否应该设计为继承关系的简单规则，就是 ”is-a" 规则，它表明子类的每个对象也是超类的对象。
 
-“is-a” 规则的另一种表述法是置换法则：程序中出现超类对象的任何地方都可以用子类对象置换。可以将一个子类的对象赋给超类变量，但是注意：绝对不能将超类变量赋给子类变量。
+“is-a” 规则的另一种表述法是置换法则：程序中出现超类对象的任何地方都可以用子类对象置换。**可以将一个子类的对象赋给超类变量，但是注意：绝对不能将超类变量赋给子类变量。如下：**
+
+```java
+//Manager类继承自Employee
+Employee employee = null;
+System.out.println(employee.toString());
+employee = new Manager("Manager", 100,"Boss");
+System.out.println(employee.toString());
+```
 
 在 Java 中，对象变量是多态的。一个`Employee`变量既可以引用`Employee`类对象，也可以引用一个`Employee`类的任何一个子类的对象。
 
@@ -1791,7 +1803,7 @@ class Student extends Person
 
 1. 有时候，可能希望阻止人们利用某个类定义子类。不允许扩展的类被称为final类。如果在定义类的时候使用了final修饰符就表示这个类是fianl类。
 
-2. 类中的特定方法也可以被声明为final。如果这样做，子类就不能覆盖这个方法（fianl类中的所有方法自动地称为final方法，但不包括域）。
+2. **类中的特定方法也可以被声明为final。如果这样做，子类就不能覆盖这个方法**（fianl类中的所有方法自动地称为final方法，但不包括域）。
 
 3. 将方法或类声明为final主要目的是：确保它们不会在子类中改变语义。
 4. 如果一个方法没有被覆盖而且很短，编译器就能对它进行优化处理，这个过程称为内联（inline）。然而，如果被覆盖，那么编译器就无法知道覆盖的代码将会做什么操作，因此就不能对它进行内联处理了。
@@ -1799,7 +1811,7 @@ class Student extends Person
 
 ### 5.1.8 强制类型转换
 
-1. 超类转子类会出现一个ClassCastException，需要加上`（）`强转；子类转超类不需要加上强转。
+1. 超类转子类会出现一个ClassCastException，需要加上`（）`强转（即使加上强转在一般情况仍会报异常）；子类转超类不需要加上强转。
 2. 进行类型转换的唯一原因：在暂时忽视对象的实际类型之后，使用对象的全部功能。
 
 > 一个简单的记忆方式是：
@@ -1829,8 +1841,57 @@ class Student extends Person
 注意：
 
 - 抽象类中可以包含非抽象方法，这些非抽象方法可以有自己的具体实现
+
 - 类即使不含抽象方法，也可以将类声明为抽象类
+
 - 抽象类不能被实例化；但是可以定义一个抽象类的对象变量，但是它只能应用非抽象子类的对象，如`Person p = new Student("小王",123456);`（这里Person是抽象类，Student继承自Person类，但是非抽象）
+
+- 抽象类可以通过这种方法来实例化，在Android中的点击事件中常用：
+
+  ```java
+  public abstract class Person {
+      private String name;
+  
+      private int age;
+  
+      private enum sex{MAN, WOMAN}
+  
+      public Person(String name, int age) {
+          this.name = name;
+          this.age = age;
+      }
+  
+      public abstract void fun1();
+  
+      public String getName() {
+          return name;
+      }
+  
+      public void setName(String name) {
+          this.name = name;
+      }
+  
+      public int getAge() {
+          return age;
+      }
+  
+      public void setAge(int age) {
+          this.age = age;
+      }
+  
+      public static void main(String[] args) {
+          Person p = new Person("Name", 20) {
+              @Override
+              public void fun1() {
+                  //TODO
+              }
+          };
+      }
+  }
+  
+  ```
+
+  
 
 ### 5.1.10 受保护访问
 
@@ -1855,11 +1916,18 @@ class Student extends Person
 
 熟悉这个类提供的所有服务十分重要。
 
+可以使用Object类型的变量来引用任何类型的对象，但要想对其中的内容进行具体的操作，还需要清楚对象的原始类型，并进行相应的类型转换：
+
+```java
+Object obj = new Employee("Harry",3500);
+Employee e = (Employee) obj;
+```
+
 在Java中，只有基本类型不是对象，但是所有的数组类型，无论是对象数组还是基本类型数组都扩展了Object类。
 
 ### 5.2.1 equals方法
 
-`Object`类中的`equals`方法用于检测一个对象是否等于另一个对象，但是只是简单的判断引用是否相等`return (this == obj)`；但是实际用处不大，所以一般自定义的类进行判断都会重写`equals`方法
+`Object`类中的`equals`方法用于检测一个对象是否等于另一个对象，但是只是简单的判断引用是否相等`return (this == obj)`；但是实际用处不大，所以一般自定义的类进行判断都会**重写`equals`方法**
 
 ```java
 //java.util.Object
@@ -1875,18 +1943,846 @@ public static bool equals(Object a, Object b)
 }
 ```
 
+如在Employee类中重写Object类的equals方法，是如下（在IDEA里可以自动补全）：
+
+```java
+import java.util.Objects;
+
+/**
+ * Employee 类
+ */
+public class Employee{
+
+    private String name;
+
+    private double salary;
+
+    /**
+     * 构造器方法
+     * @param name  姓名
+     * @param salary    薪水
+     */
+    public Employee(String name, double salary) {
+        this.name = name;
+        this.salary = salary;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public double getSalary() {
+        return salary;
+    }
+
+    public void setSalary(double salary) {
+        this.salary = salary;
+    }
 
 
-# 赞助
+    @Override
+    public String toString() {
+        return "Employee{" +
+                "name='" + name + '\'' +
+                ", salary=" + salary +
+                '}';
+    }
 
-如果这篇博客对你有帮助，或许你可以请我喝杯咖啡
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Employee employee = (Employee) o;
+        //使用Objects.equals方法是为了防止其中有参数为null
+        return Double.compare(employee.salary, salary) == 0 &&
+                Objects.equals(name, employee.name);
+    }
+}
 
-<center class="half">
-    <img src="https://raw.githubusercontent.com/PeachLuis/Picture_bed/master/img/zhifubao_ma.jpg
-" width="250"/>
-    <img src="https://raw.githubusercontent.com/PeachLuis/Picture_bed/master/img/wechat_ma.jpg
-" width="250"/>
-</center>
+```
+
+### 5.2.2 相等测试与继承
+
+如果隐式和显式的参数不属于同一个类，equals方法将如何处理呢?这是一个很有争议的问题。 在前面的例子中， 如果发现类不匹配， equals 方法就返冋 false； 但是， 许多程序员却喜欢使用 instanceof 进行检测：
+
+```java
+if(!(otherObject instanceof Employee)) return false;
+```
+
+这样做不但没有解决 otherObject 是子类的情况，并且还有可能会招致一些麻烦。这就是建议 不要使用这种处理方式的原因所在。Java 语言规范要求 equals 方法具有下面的特性：
+
+1)自反性:对于任何非空引用x，x.equals(x)应该返回true。
+2）对称性:对于任何引用x和y，当且仅当y.equals(x)返回true，x.equals(y)也应该返回true。
+3）传递性:对于任何引用x、y和z,如果x.equals(y)返回true，y.equals(z)返回 true,x.equals(z)也应该返回 true。
+4)一致性:如果x和y引用的对象没有发生变化，反复调用x.equals(y)应该返回同样的结果。
+5）对于任意非空引用x,x.equals(null)应该返回false。
+
+这些规则十分合乎情理，从而避免了类库实现者在数据结构中定位一个元素时还要考虑调用x.equals(y)，还是调用y.equals(x)的问题。
+
+然而，就对称性来说，当参数不属于同一个类的时候需要仔细地思考一下，如下面一个调用:
+
+```java
+e.equals(m)
+```
+
+这里的e是一个 Employee对象,m是一个Manager对象，并且两个对象具有相同的姓名、薪水和雇佣日期。如果在Employee.equals 中用 `instanceof`进行检测，则返回 true。然而这意味着反过来调用:
+
+```java
+m.equals(e)
+```
+
+也需要返回true。对称性不允许这个方法调用返回false，或者抛出异常。
+
+这就使得Manager类受到了束缚。这个类的equals方法必须能够用自己与任何一个 Employee对象进行比较，而不考虑经理拥有的那部分特有信息!猛然间会让人感觉instanceof测试并不是完美无瑕。
+
+所以可以从两个截然不同的情况来看这个问题：
+
+- 如果子类能够拥有自己的相等概念， 则对称性需求将强制采用 getClass 进行检测；
+- 如果由超类决定相等的概念，那么就可以使用 imtanceof进行检测， 这样可以在不同 子类的对象之间进行相等的比较。
+
+在雇员和经理的例子中，只要对应的域相等，就认为两个对象相等。如果两个Manager对象所对应的姓名、薪水和雇佣日期均相等，而奖金不相等，就认为它们是不相同的，因此，可以使用getClass检测。
+
+但是，假设使用雇员的ID作为相等的检测标准，并且这个相等的概念适用于所有的子类，就可以使用`instanceof`进行检测，并应该将Employee.equals声明为final。
+
+**下面给出编写一个完美的equals方法的建议:**
+
+1. 显式参数命名为otherObject，稍后需要将它转换成另一个叫做other的变量。
+
+2. 检测this与otherObject是否引用同一个对象:
+
+   ```java
+   if (this == otherObject) return true;
+   ```
+
+   这条语句只是一个优化。实际上，这是一种经常采用的形式。因为计算这个等式要比一个一个地比较类中的域所付出的代价小得多。
+
+3. 检测otherObject是否为null，如果为null，返回false。这项检测是很必要的。
+
+   ```java
+   if (otherObject == null) return false;
+   ```
+
+4. 比较this与otherObject是否属于同一个类。如果equals的语义在每个子类中有所改变，就使用getClass检测：
+
+   ```java
+   if (getClass() != otherObject.getClass()) return false;
+   ```
+
+   如果所有的子类都拥有统一的语义，就使用instanceof检测:
+
+   ```java
+   if (!(otherObject instanceof ClassName)) return false;
+   ```
+
+5. 将otherObject转换为相应的类类型变量:
+
+   ```java
+   ClassName other = (ClassName)otherObject
+   ```
+
+6. 现在开始对所有需要比较的域进行比较了。使用==比较基本类型域，使用equals 比较对象域。如果所有的域都匹配,就返回true;否则返回false。
+
+   ```java
+   return field1 == other.field1
+   	&& Objects.equals(field2，other.field2)
+   	&& ...;
+   ```
+
+如果在子类中重新定义equals，就要在其中包含调用super.equals(other)
+
+> 提示：对于数组类型的域， 可以使用静态的 Arrays.equals 方法检测相应的数组元素是否相等
+>
+> 警告：要在一个类中重写equals方法，需要重写Object类的equals方法，即传入的参数需要为Object，而不是详细的数据类型（参数不同，并不是equals方法的重写，而是重载）
+
+### 5.2.3 hashCode方法
+
+散列码(hash code)是由对象导出的一个整型值。散列码是没有规律的。如果x和y是两个不同的对象，x.hashCode( )与y.hashCode( )基本上不会相同。String类使用下列算法计算散列码：
+
+```java
+public int hashCode() {
+        int h = hash;
+        if (h == 0 && value.length > 0) {
+            char val[] = value;
+
+            for (int i = 0; i < value.length; i++) {
+                h = 31 * h + val[i];
+            }
+            hash = h;
+        }
+        return h;
+    }
+```
+
+如果两个String类型的字符串内容是一样的，则得到的hashCode值是一样的，由上可以看出，因为字符串的散列码是由内容导出的。
+
+其他类一般都是调用的Object类中的hashCode方法得到的HashCode。
+
+hashCode方法应该返回一个整型数值（也可以是负数），并合理地组合实例域的散列码，以便能够让各个不同的对象产生的散列码更加均匀。如Employee类的hashCode方法：
+
+```java
+public class Employee{
+    public int hashCode(){
+        return 7* name.hashCode()
+            + 11 * new Double(salary).hashCode;
+    }
+}
+```
+
+不过，最好使用null安全的方法`Objects.hashCode`，如果参数为null，这个方法会返回0，否则返回对参数调用hashCode的结果。另外，使用静态方法`Double.hashCode`来避免创建Double对象。
+
+还有更好的做法，需要组合多个散列值时，可以调用Objects.hash并提供多个参数，这个方法会对各个参数调用Objects.hashCode方法，并组合这些散列值，如下：
+
+```java
+public int hashCode(){
+	return Objects.hash(name,salary);
+}
+```
+
+Equals 与 hashCode的定义必须一致:如果x.equals(y)返回true，那么x.hashCode()就必须与y.hashCode()具有相同的值。例如，如果用定义的 Employee.equals 比较雇员的ID，那么hashCode方法就需要散列ID，而不是雇员的姓名或存储地址。
+
+### 5.2.4 toString方法
+
+Object类中的`toString`方法：
+
+```java
+public String toString() {
+    return getClass().getName() + "@" + Integer.toHexString(hashCode());
+}
+```
+
+因为所有类继承自Object类，而这个类的toString方法只是显示类名和hash值，并没有什么实际作用，所以一般子类都会重写该方法；在IDEA中，重写可以根据实例域来自动生成，一般的格式如下：
+
+```java
+@Override
+public String toString() {
+    return "Employee{" +
+        "name='" + name + '\'' +
+        ", salary=" + salary +
+        '}';
+}
+```
+
+但是继承链上如果有更多的话，类名可以更加通用，如下：
+
+```java
+@Override
+public String toString() {
+    return  getClass().getName()+
+        "{name='" + name + '\'' +
+        ", salary=" + salary +
+        '}';
+}
+```
+
+**数组的打印：**
+
+普通数组：Arrays.toString(args)，支持基本类型和引用类型
+
+多维数组：Arrays.deepToString(args)，支持基本类型和引用类型
+
+**日志功能：**
+
+建议在每个自定义类都重写自己的toString方法，方便日志记录，更好的方式是第7章的日志功能：
+
+```java
+Logger.global.info("Current position = " + position);
+```
+
+## 5.3 泛型数组列表
+
+泛型数组列表使用起来像数组，但是能够**自动调节数组容量**，可以理解为是无限大；
+
+是采用类型参数的泛型类，需要用`<>`将类名包括，只支持引用类型，如果是基本类型，需要使用其包装类，如Integer、Double等；
+
+![image-20201228084822013](img/image-20201228084822013.png)
+
+```java
+//基本使用方法
+ArrayList<Integer> nums = new ArrayList<>();
+nums.add(1);
+nums.add(2);
+```
+
+> **注释：**java SE 5.0以前没有泛型类，而是有一个ArrayList类，其中保存类型为Object的元素，它是“自适应大小”的集合。如果一定要使用老版本的Java，则需要将所有的后缀<...>删掉。在Java SE 5.0以后的版本中，没有后缀<...>仍然可以使用ArrayList，它将被认为是一个删去了类型参数的“原始”类型。
+>
+> **注释：**在Java的老版本中，程序员使用Vector类实现动态数组。不过，ArrayList类更加有效，没有任何理由一定要使用 Vector类。
+
+### 5.3.1 访问数组列表元素
+
+普通数组：
+
+```java
+int[] nums = {1,2,3};
+//得到元素
+int temp = nums[0];
+//设置元素
+nums[0] = 2;
+```
+
+数组列表，因为是实现类，所以需要使用方法：
+
+```java
+ArrayList<Integer> nums = new ArrayList<>();
+nums.add(1);
+nums.add(2);
+nums.add(3);
+//得到元素
+int temp = nums.get(0);
+//设置元素
+nums.set(0,2);
+```
+
+上面**得到元素**和**设置元素**的操作，两者等效
+
+> **警告：**只有i小于或等于数组列表的大小时，才能够调用`list.set(i,x)`。如果数组列表为空，应使用add方法添加元素。
+
+一种既可以灵活扩展数组，又可以方便访问数组元素的方法：
+
+```java
+//初始化数组列表
+ArrayList<Integer> nums = new ArrayList<>();
+nums.add(1);
+nums.add(2);
+nums.add(3);
+
+//转化为
+Integer[] a = new Integer[nums.size()];
+a = nums.toArray(a);
+System.out.println(Arrays.toString(a));
+```
+
+`nums.add(n,e)`方法会在第n位插入一个值e，其后面的内容会自动后移一位，并且size+1；
+
+同理`nums.remoe(n)`方法会移除第n位的元素，后面内容会前移一位，并且size-1；
+
+对数组列表使用插入和删除元素的效率比较低，如果数组列表存储的元素比较多，又经常需要插入和删除，就应该使用链表。
+
+一个完整的例子：
+
+```java
+//初始化数组列表
+ArrayList<Integer> nums = new ArrayList<>();
+nums.add(1);
+nums.add(2);
+nums.add(3);
+
+//转化为
+Integer[] a = new Integer[nums.size()];
+a = nums.toArray(a);
+System.out.println(Arrays.toString(a));
+
+//foreach遍历数组列表
+for (int temp : nums) {
+    System.out.println(temp);
+}
+
+//for循环遍历数组列表
+for (int i = 0; i < nums.size(); i++) {
+    System.out.println(nums.get(i));
+}
+```
+
+### 5.3.2 类型化与原始数组列表的兼容性
+
+此节是讲如何用类型化参数的数组列表去和Java SE 5.0以前的原始数组列表进行交互操作，在重构以前的代码时可能出现。
+
+参看《java核心技术卷Ⅰ》P183
+
+## 5.4 对象包装器与自动装箱
+
+所有基本类型都有一个引用类型的类，称之为 *对象包装器（wrapper）*：
+
+​	Integer、Long、Float、Double、Short、Byte、Character、Void和Boolean（前6个类派生于公共的超类Number）。
+
+对象包装器类时不可变的，一旦构造了包装器，就不允许更改其中的值；
+
+对象包装器类都声明为`final`，即不可以定义其子类。
+
+对象包装器的效率**远不如**基本类型，但很多时候必须使用包装器类，如在ArrayList的类型化参数；
+
+**自动装箱：**
+
+```java
+//原调用
+nums.add(3);
+//编译器会将原调用自动变换成下面内容
+nums.add(Integer.valueOf(3));
+```
+
+**自动拆箱：**
+
+```java
+//原调用
+int temp = nums.get(0);
+//编译器会将原调用自动变换成下面内容
+int temp = nums.get(0).intValue();
+```
+
+大多数情况下，自动装/拆箱容易有一种假象，即**基本类型与它们的对象包装器是一样**的，只是它们的相等性不同。大家知道，==运算符也可以应用于对象包装器对象，只不过检测的是对象是否指向同一个存储区域,因此，下面的比较通常不会成立：
+
+```java
+Integer a= 1000;
+Integer b = 1000;
+System.out.println(a==b);
+```
+
+但是现在已经是成立的了，因为在Integer中的hashCode方法是直接返回Integer的值本身，如果本身值相等，则hashCode也相等。但稳妥起见，还是强烈建议使用equals方法来进行判断。
+
+> **注释：**自动装箱规范要求 boolean、byte、char 127， 介于 -128 ~ 127 之间的 short 和 int 被包装到固定的对象中。例如，如果在前面的例子中将 a 和 b 初始化为 100，对它们进行比较的结果一定成立。
+
+装箱和拆箱是**编译器认可**的，而不是虚拟机。编译器在生成类的字节码 时， 插人必要的方法调用。虚拟机只是执行这些字节码。
+
+![image-20201228095047339](img/image-20201228095047339.png)
+
+## 5.5 参数数量可变的方法
+
+在Java SE 5.0及以后，可以使用变参（参数数量可变）方法。
+
+如printf方法，定义和使用如下：
+
+```java
+//定义
+public PrintStream printf(String format, Object ... args) {
+    return format(format, args);
+}
+
+//使用
+String name = "Jack";
+int age = 10;
+System.out.printf("age = %d", age);
+System.out.printf("name = %s, age = %d", name, age);
+```
+
+这里的`...`是Java代码的一部分，它表明这个方法可以接收任意数量的对象（除 fmt 参数之外)。
+
+`Object ...`在方法内部等效为`Object []`，但是不同在调用方法时，传递参数时，一个是传不定数量的参数，一个是传数组。
+
+## 5.6 枚举类
+
+简单的在类中实例域创建Enum，若没有初始化，则从0开始按顺序默认初始化：
+
+```java
+public enum Size {SMALL,MEDIUM,LARGER};
+```
+
+其实这个声明定义的类型是一个类，如下：
+
+```java
+public enum Size {
+    SMALL("S"),MEDIUM("M"), LARGE("L");
+
+    private String dsc;
+
+    Size(String dsc) {
+        this.dsc = dsc;
+    }
+
+    public String getDsc() {
+        return dsc;
+    }
+}
+
+```
+
+所有枚举类型都继承自Enum类，可以使用Enum的许多方法。比较常用的如下：
+
+```java
+Size s = Size.SMALL;
+String sStr = Size.SMALL.toString();
+System.out.println(sStr);
+
+Size m = Enum.valueOf(Size.class, "MEDIUM");
+System.out.println(m);
+```
+
+## 5.7 反射
+
+使用反射库，能编写能够动态操作Java代码的程序，大量运用于JavaBean。
+
+反射：能够分析类能力的程序，作用如下：
+
+- 在运行时分析类的能力。
+- 在运行时查看对象，例如，编写一个toString 方法供所有类使用。
+- 实现通用的数组操作代码。
+- 利用Method对象，这个对象很像C++中的函数指针。
+
+### 5.7.1 Class类
+
+在程序运行期间，Java运行时系统始终为所有的对象维护一个被称为运行时的类型标识。这个信息跟踪着每个对象所属的类。虚拟机利用运行时类型信息选择相应的方法执行。
+
+然而，可以通过专门的Java类访问这些信息。保存这些信息的类被称为**Class**，这个名字很容易让人混淆。Object类中的 `getClass( )`方法将会返回一个Class类型的实例。
+
+```java
+Employee employee = new Employee("Jack", 100);
+Random random = new Random();
+
+//使用getClass方法得到Class类对象
+Class c = employee.getClass();
+Class c2 = random.getClass();
+
+//使用toString输出类对象
+System.out.println(c);
+//调用Class类中的getName方法，将返回一个类名，若在包内，则输出完整包名
+System.out.println(c.getName());
+System.out.println(c2.getName());
+
+//输出：
+class Employee
+Employee
+java.util.Random
+```
+
+还可以调用静态方法forName获得类名对应的Class对象。如果类名保存在字符串中，并可在运行中改变，就可以使用这个方法。当然，这个方法**只有在className是类名或接口名时才能够执行**。否则，forName方法将抛出一个checkedexception(已检查异常)。无论何时使用这个方法，都应该提供一个异常处理器（ exceptionhandler)。
+
+```java
+String className = "java.util.Random";
+try {
+    Class cRandom = Class.forName(className);
+} catch (ClassNotFoundException e) {
+    e.printStackTrace();
+}
+```
+
+> **提示：**在启动时，包含main方法的类被加载。它会加载所有需要的类。这些被加载的类又要加载它们需要的类，以此类推。对于一个大型的应用程序来说，这将会消耗很多时间，用户会因此感到不耐烦。可以使用下面这个技巧给用户一种启动速度比较快的幻觉。不过，要确保包含main方法的类没有显式地引用其他的类。
+>
+> 首先，显示一个启动画面;然后，通过调用Class.forName手工地加载其他的类。
+
+总结获取Class类的三种方法：
+
+```java
+//使用getClass方法
+Employee e = new Employee("Jack",100);
+Class cl1 = e.getClass();
+
+//使用静态方法forName，需要添加异常处理
+Class cl2 = Class.forName("Employee");	//假定Employee类位于classpath下，即没有外层package
+
+//加后缀class
+Class cl3 = Random.class;	//假如导入了java.util.*
+Class cl4 = int.class;
+Class cl5 = Double[].class;
+```
+
+请注意，一个Class 对象实际上表示的是一个类型，而这个类型未必一定是一种类。例如，int不是类，但 int.class是一个 Class类型的对象。
+
+虚拟机为每个类型管理一个Class对象。因此，可以利用==-运算符实现两个类对象比较的操作。例如：
+
+```java
+Employee e = new Employee("Jack",100);
+if(e.getClass == Employee.class)
+```
+
+Class类中还有一个`newInstance`方法，会返回一个泛型类的实例，它会自动调用默认的构造函数（无参构造函数），如果没有则会抛出异常。
+
+```java
+String s = "java.util.Random";
+try {
+    Object m = Class.forName(s).newInstance();
+    System.out.println(m);
+} catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+    e.printStackTrace();
+}
+
+```
+
+> **注释：**如果需要对有参构造函数使用上面方法，不能使用Class类中的newInstance方法，而需要使用Constructor类中的newInstance方法。
+
+### 5.7.2 捕获异常
+
+异常分类：
+
+- 已检查异常，IDEA会报错，提示你需要修改，才能运行，如Class.forName方法
+- 未检查异常，IDEA不会提示，在运行时才可能报错
+
+```java
+try {
+    String className = "java.util.Random";
+    Class cRandom = Class.forName(className);		//可能抛出异常
+} catch (ClassNotFoundException e) {
+    e.printStackTrace();
+}
+```
+
+### 5.7.3 利用反射分析类的能力
+
+主要是得到类的内部信息：类名、超类名、实例域、构造器和方法
+
+在java.lang.reflect包中有三个类`Field`、`Method`和 `Constructor`分别用于描述类的域、方法和构造器。这三个类都有一个叫做`getName`的方法，用来返回项目的名称Field类有一个`getType`方法，用来返回描述域所属类型的Class对象。Method和 Constructor类有能够报告参数类型的方法，Method类还有一个可以报告返回类型的方法。
+
+这三个类还有一个叫做`getModifiers` 的方法，它将返回一个整型数值，用不同的位开关描述public 和 static 这样 的修饰符使用状况。另外，还可以利用java.lang.reflect的 Modifier类的静态方法分析`getModifiers`返回的整型数值。例如，可以使用Modifier类中的的 `isPublic`、 `isPrivate` 或 `isFinal`来判断方法或构造器是否是public、private或final。我们需要做的全部工作就是调用Modifier类的相应方法，并对返回的整型数值进行分析，另外，还可以利用Modifier.toString方法将修饰符打印出来。
+
+Class类中的`getFields`、 `getMethods`和 `getConstructors`方法将分别返回类提供的public域、方法和构造器数组，其中包括超类的公有成员。Class类的`getDeclareFields` .`getDeclareMethods`和`getDeclaredConstructors`方法将分别返回类中声明的全部域、方法和构造器,其中包括私有和受保护成员,但不包括超类的成员。
+
+下面的测试类，输入一个类名（包括包），则会输出类的详细信息
+
+```java
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Scanner;
+
+public class ReflectionTest {
+
+    public static void main(String[] args) {
+        //从命令行或者命令行参数读取name
+        String name = "";
+        if (args.length > 0) {
+            name = args[0];
+        } else {
+            Scanner in = new Scanner(System.in);
+            System.out.println("请输入类名（如：java.util.Date）：");
+            name = in.next();
+        }
+
+        try {
+            //如果变量不为空，打印类名和超类名
+            Class cl = Class.forName(name);
+            Class superCl = cl.getSuperclass();
+
+            String modifiers = Modifier.toString(cl.getModifiers());
+            if (modifiers.length() > 0) {
+                System.out.print(modifiers + " ");
+            }
+            System.out.print("class " + name);
+            if (superCl != null && superCl != Object.class) {
+                System.out.print(" extends " + superCl.getName()+" {");
+            }
+            System.out.println();
+            //打印构造器
+            printConstructor(cl);
+            System.out.println();
+            //打印实例域
+            printFields(cl);
+            System.out.println();
+            //打印方法
+            printMethods(cl);
+            System.out.println("}");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 打印方法
+     * @param cl 类名
+     */
+    private static void printMethods(Class cl) {
+        Method[] methods = cl.getDeclaredMethods();
+
+        for (Method m : methods) {
+            Class returnType = m.getReturnType();
+            String name = m.getName();
+
+            System.out.print("    ");
+            String modifiers = Modifier.toString(m.getModifiers());
+            if (modifiers.length() > 0) {
+                System.out.print(modifiers + " ");
+            }
+            System.out.print(returnType.getName() + " " + name + "(");
+
+            //打印参数
+            Class[] paramTypes = m.getParameterTypes();
+            for (int i = 0; i < paramTypes.length; i++) {
+                if (i > 0) {
+                    System.out.print(", ");
+                }
+                System.out.print(paramTypes[i].getName());
+            }
+            System.out.println(");");
+        }
+    }
+
+    /**
+     * 大应实例域
+     * @param cl 类名
+     */
+    private static void printFields(Class cl) {
+        Field[] fields = cl.getDeclaredFields();
+
+        for (Field f : fields) {
+            Class type = f.getType();
+            String name = f.getName();
+            System.out.print("    ");
+
+            String modifiers = Modifier.toString(f.getModifiers());
+            if (modifiers.length() > 0) {
+                System.out.print(modifiers + " ");
+            }
+            System.out.println(type.getName() + " " + name + ";");
+        }
+    }
+
+    /**
+     * 打印构造器
+     * @param cl 类名
+     */
+    private static void printConstructor(Class cl) {
+        Constructor[] constructors = cl.getDeclaredConstructors();
+
+        for (Constructor c : constructors) {
+            String name = c.getName();
+            System.out.print("    ");
+
+            String modifiers = Modifier.toString(c.getModifiers());
+            if (modifiers.length() > 0) {
+                System.out.print(modifiers + " ");
+            }
+            System.out.print(name + "(");
+
+            //打印参数
+            Class[] paramTypes = c.getParameterTypes();
+            for (int i = 0; i < paramTypes.length; i++) {
+                if (i > 0) {
+                    System.out.print(", ");
+                }
+                System.out.print(paramTypes[i].getName());
+            }
+            System.out.println(");");
+        }
+    }
 
 
+}
+
+```
+
+控制台：
+
+```
+请输入类名（如：java.util.Date）：
+java.lang.Double
+public final class java.lang.Double extends java.lang.Number {
+    public java.lang.Double(double);
+    public java.lang.Double(java.lang.String);
+
+    public static final double POSITIVE_INFINITY;
+    public static final double NEGATIVE_INFINITY;
+    public static final double NaN;
+    public static final double MAX_VALUE;
+    public static final double MIN_NORMAL;
+    public static final double MIN_VALUE;
+    public static final int MAX_EXPONENT;
+    public static final int MIN_EXPONENT;
+    public static final int SIZE;
+    public static final int BYTES;
+    public static final java.lang.Class TYPE;
+    private final double value;
+    private static final long serialVersionUID;
+
+    public boolean equals(java.lang.Object);
+    public static java.lang.String toString(double);
+    public java.lang.String toString();
+    public int hashCode();
+    public static int hashCode(double);
+    public static double min(double, double);
+    public static double max(double, double);
+    public static native long doubleToRawLongBits(double);
+    public static long doubleToLongBits(double);
+    public static native double longBitsToDouble(long);
+    public volatile int compareTo(java.lang.Object);
+    public int compareTo(java.lang.Double);
+    public byte byteValue();
+    public short shortValue();
+    public int intValue();
+    public long longValue();
+    public float floatValue();
+    public double doubleValue();
+    public static java.lang.Double valueOf(java.lang.String);
+    public static java.lang.Double valueOf(double);
+    public static java.lang.String toHexString(double);
+    public static int compare(double, double);
+    public static boolean isNaN(double);
+    public boolean isNaN();
+    public static boolean isFinite(double);
+    public static boolean isInfinite(double);
+    public boolean isInfinite();
+    public static double sum(double, double);
+    public static double parseDouble(java.lang.String);
+}
+```
+
+### 5.7.4 在运行时使用反射分析对象
+
+本节将进一步查看实例域中的实际内容。**利用反射机制可以查看在编译时还不清楚的实例域。**
+
+查看对象域的关键方法是 Field类中的 get 方法：
+
+```java
+Employee employee = new Employee("Jack", 100);
+Class cl = employee.getClass();
+try {
+    Field field = cl.getDeclaredField("name");
+    //使用get方法，可以得到实例域中的实际内容
+    Object v = field.get(employee);
+    System.out.println(v);
+} catch (NoSuchFieldException | IllegalAccessException e) {
+    e.printStackTrace();
+}
+
+//输出：
+Jack
+```
+
+```java
+//打印所有实例域的type和实际值
+Employee employee = new Employee("Jack", 100);
+Class cl = employee.getClass();
+try {
+    Field[] fields = cl.getDeclaredFields();
+    for (Field f : fields) {
+        Class type = f.getType();
+        String name = f.getName();
+        Object factValue = f.get(employee);
+        System.out.println(type.getName() + " " + name + " " + factValue);
+    }
+} catch (IllegalAccessException e) {
+    e.printStackTrace();
+}
+
+//输出：
+java.lang.String name Jack
+double salary 100.0
+```
+
+以上内容只有在Employee代码中的main函数中才能成功输入，因为Employee类的实例域的访问权限都是private，所以在其他类中都无法访问，如果运行，get方法就会抛出`IllegalAccessException`异常；
+
+但是如果要在其他类中访问private类型，也很简单，只需要使用AccessibleObject类中的setAccessible方法即可，Field、Method和Constructor类都继承自此类，即都拥有此方法，所以上述代码只需添加一行f.setAccessible(true)即可在其他类中访问private。
+
+```java
+//打印所有实例域的type和实际值
+Employee employee = new Employee("Jack", 100);
+Class cl = employee.getClass();
+try {
+    Field[] fields = cl.getDeclaredFields();
+    for (Field f : fields) {
+    	//添加此行即可访问所有类
+    	f.setAccessible(true);
+        Class type = f.getType();
+        String name = f.getName();
+        Object factValue = f.get(employee);
+        System.out.println(type.getName() + " " + name + " " + factValue);
+    }
+} catch (IllegalAccessException e) {
+    e.printStackTrace();
+}
+```
+
+当然，可以获得就可以设置，**调用`f.set(obj, value)`可以将obj对象的f域设置成新的值value**。
+
+### 5.7.5 使用反射编写泛型数组代码
+
+### 5.7.6 调用任意方法
+
+## 5.8 继承的设计技巧
+
+
+
+# 第六章 接口、lambda表达式与内部类
+
+## 6.1 接口
 
