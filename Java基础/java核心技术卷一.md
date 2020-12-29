@@ -2774,13 +2774,278 @@ try {
 
 当然，可以获得就可以设置，**调用`f.set(obj, value)`可以将obj对象的f域设置成新的值value**。
 
+编写任意类的通用toString方法：
+
+```java
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+
+public class ObjectAnalyzer {
+
+    private ArrayList<Object> visited = new ArrayList<>();
+
+    public String toString(Object obj) {
+        //如果为空
+        if (obj == null) {
+            return "null";
+        }
+        if (visited.contains(obj)) {
+            return "...";
+        }
+
+        visited.add(obj);
+
+        Class cl = obj.getClass();
+
+        //如果为String
+        if (cl == String.class) {
+            return (String) obj;
+        }
+
+        //如果为数组
+        if (cl.isArray()) {
+            String r = cl.getComponentType() + "[]{";
+            for (int i = 0; i < Array.getLength(obj); i++) {
+                if (i > 0) {
+                    r += ",";
+                }
+                Object val = Array.get(obj, i);
+                //如果为基本类型数组
+                if (cl.getComponentType().isPrimitive()) {
+                    r += val;
+                } else {
+                    r += toString(val);
+                }
+            }
+            return r + "}";
+        }
+
+        String r = cl.getName();
+        //检查所有实例域和所有超类
+        do {
+            r += "[";
+            Field[] fields = cl.getDeclaredFields();
+            AccessibleObject.setAccessible(fields, true);
+            //得到实例域的名字和值
+            for (Field f : fields) {
+                if (!Modifier.isStatic(f.getModifiers())) {
+                    if (!r.endsWith("[")) {
+                        r += ",";
+                    }
+                    r += f.getName() + " = ";
+                    try {
+                        Class t = f.getType();
+                        Object val = f.get(obj);
+                        if (t.isPrimitive()) {
+                            r += val;
+                        } else {
+                            r += toString(val);
+                        }
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            r += "]";
+            cl = cl.getSuperclass();
+        } while (cl != null);
+
+        return r;
+    }
+
+    public static void main(String[] args) {
+        ArrayList<Integer> integers = new ArrayList<>();
+        for (int i = 1; i < 6; i++) {
+            integers.add(i * i);
+        }
+        System.out.println(new ObjectAnalyzer().toString(integers));
+    }
+}
+
+```
+
+![image-20201229095857437](img/image-20201229095857437.png)
+
 ### 5.7.5 使用反射编写泛型数组代码
+
+java.lang.reflect 包中的 Array 类允许动态地创建数组。`Arrays.copyOf(nums, length)`可以返回一个数组的深拷贝；
+
+前面已经看到，Java 数组会记住每个元素的类型， 即创建数 组时 new 表达式中使用的元素类型。为了编写类似copyOf的方法，需要能够创建与原数组类型相同的新数组。为此，需要java, lang.reflect 包中 Array 类的一些方法，其中最关键的是 Array类中的静态方法 newlnstance, 它能够构造新数组。在调用它时必须提供两个参数，一个是数组的元素类型，一个是数组的长度。
+
+```java
+Object newArray = Array.newInstance(compoentType, newLength);
+```
+
+数组长度可以通过调用Array.getLength(a)方法来获得。
+
+而获得新数组元素类型，需要：
+
+- 首先获得a数组的类对象
+- 确认它是一个数组
+- 使用Class类类（只能定义表示数组的类对象）的 getComponentType 方法确定数组对应的类型。
+
+```java
+import java.lang.reflect.Array;
+import java.util.Arrays;
+
+public class CopyOfTest {
+
+    public static void main(String[] args) {
+        int[] a = {1, 2, 3};
+        a = (int[]) goodCopyOf(a, 10);
+        System.out.println(Arrays.toString(a));
+
+        String[] b = {"Tome", "Dick", "Harry"};
+        b = (String[]) goodCopyOf(b, 10);
+        System.out.println(Arrays.toString(b));
+
+    }
+
+    /***
+     * 无法成功的copyOf方法
+     * 因为这里超类Object无法转换为指定类型，会报错ClassCastException
+     * @param a 数组
+     * @param newLength 新长度
+     * @return 拷贝的数组
+     */
+    public static Object[] badCopyOf(Object[] a, int newLength) {   //not useful
+        Object[] newArray = new Object[newLength];
+        System.arraycopy(a, 0, newArray,0, Math.min(a.length, newLength));
+        return newArray;
+    }
+
+    public static Object goodCopyOf(Object a, int newLength) {
+        Class cl = a.getClass();
+        //不是数组，则返回null
+        if (!cl.isArray()) {
+            return null;
+        }
+
+        //是数组，则处理如下
+        Class componentType = cl.getComponentType();
+        int length = Array.getLength(a);
+        Object newArray = Array.newInstance(componentType, newLength);
+        System.arraycopy(a, 0, newArray, 0, Math.min(length, newLength));
+        return newArray;
+    }
+}
+```
+
+![image-20201229110927610](img/image-20201229110927610.png)
 
 ### 5.7.6 调用任意方法
 
+在 C 和 C++ 中， 可以从函数指针执行任意函数。从表面上看， Java 没有提供方法指针， 即将一个方法的存储地址传给另外一个方法， 以便第二个方法能够随后调用它。事实上， Java 的设计者曾说过：方法指针是很危险的，并且常常会带来隐患。他们认为 Java 提供的 接口（interface ) (将在下一章讨论）是一种更好的解决方案。然而， 反射机制允许你调用任意方法。
+
+为了能够看到方法指针的工作过程， 先回忆一下利用 Field 类的 get 方法查看对象域的过程。与之类似，**在 Method 类中有一个 invoke 方法， 它允许调用包装在当前 Method 对象中 的方法。**nvoke 方法的签名是：
+
+```java
+Object invoke(Object obj, Object...args)
+```
+
+第一个参数是隐式参数， 其余的对象提供了显式参数。对于静态方法，第一个参数可以被忽略， 即可以将它设置为 null。例如， 假设用 ml 代表 Employee 类的 getName 方法，下面这条语句显示了如何调用这个方法：
+
+```java
+String n = (String) m1.invoke(harry);
+```
+
+如果返回类型是基本类型， invoke 方法会返回其包装器类型。 例如， 假设 m2 表示 Employee 类的 getSalary 方法， 那么返回的对象实际上是一个 Double, 必须相应地完成类型 转换。可以使用自动拆箱将它转换为一个 double:
+
+```java
+double d =(Double) m2.invoke(harry);
+```
+
+如何得到 Method 对象呢？ 当然， 可以通过调用 getDeclareMethods 方法， 然后对返回 的 Method 对象数组进行查找， 直到发现想要的方法为止。 也可以通过调用 Class类中的 getMethod方法得到想要的方法。它与 getField 方法类似。getField 方法根据表示域名的字 符串，返回一个 Field 对象。然而， 有可能存在若干个相同名字的方法，因此要格外小心， 以确保能够准确地得到想要的那个方法。有鉴于此，还必须提供想要的方法的参数类型。 getMethod 的签名是：
+
+```java
+Method getMethod(String name, Class... parameterTypes);
+
+//例子
+Method m1 = Employee.class.getMethod("getName");
+Method m2 = Employee.class.getMethod("setSalary",double.class);
+```
+
+一个实例：
+
+```java
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+public class MethodTableTest {
+
+    public static void main(String[] args) throws NoSuchMethodException {
+        Method square = MethodTableTest.class.getMethod("square", double.class);
+//        Method sqrt = MethodTableTest.class.getMethod("sqrt", double.class);
+
+        printTable(1, 10, 10, square);
+//        printTable(1, 10, 10, sqrt);
+    }
+
+    public static double square(double x) {
+        return x * x;
+    }
+
+    public static void printTable(double from, double to, int n, Method f) {
+        System.out.println(f);
+
+        double dx = (to - from) / (n - 1);
+
+        for (double x = from; x <= to; x += dx) {
+            double y = 0;
+            try {
+                y = (double) f.invoke(null, x);
+                System.out.printf("%10.4f | %10.4f%n", x, y);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+```
+
+输出：
+
+```
+public static double MethodTableTest.square(double)
+    1.0000 |     1.0000
+    2.0000 |     4.0000
+    3.0000 |     9.0000
+    4.0000 |    16.0000
+    5.0000 |    25.0000
+    6.0000 |    36.0000
+    7.0000 |    49.0000
+    8.0000 |    64.0000
+    9.0000 |    81.0000
+   10.0000 |   100.0000
+
+```
+
+上述程序清楚地表明， 可以使用 method 对象实现 C (或 C# 中的委派）语言中函数指针 的所有操作。同 C 一样，这种程序设计风格并不太简便，出错的可能性也比较大。如果在调用方法的时候提供了一个错误的参数，那么 invoke 方法将会抛出一个异常 。
+
+另外，invoke 的参数和返回值必须是 Object 类型的。这就意味着必须进行多次的类型转 换。这样做将会使编译器错过检查代码的机会。因此， 等到测试阶段才会发现这些错误， 找到并改正它们将会更加困难。不仅如此， 使用反射获得方法指针的代码要比仅仅直接调用方 法明显慢一些。 
+
+有鉴于此，建议仅在必要的时候才使用 Method 对象，**而最好使用接口以及 Java SE 8中 的 lambda 表达式（第 6 章中介绍）**。特别要重申： **建议 Java 开发者不要使用 Method 对象的回调功能。使用接口进行回调会使得代码的执行速度更快， 更易于维护。**
+
 ## 5.8 继承的设计技巧
 
+1. 将公共操作和域放在超类
 
+2. 不要使用受保护的域，不过受保护的方法对于指示哪些不提供一般用途而应在子类中重新定义的方法很有用
+
+3. 使用继承实现“ is-a” 关系
+
+4. 除非所有继承的方法都有意义，否则不要使用继承
+
+5. 在覆盖方法时，不要改变预期的行为
+
+6. 使用多态， 而非类型信息
+
+7. 不要过多地使用反射
+
+   反射是很脆弱的， 即编译器很难帮助人们发现程序中的错误， 因此只有在运行时才发现错误并导致异常。
 
 # 第六章 接口、lambda表达式与内部类
 
