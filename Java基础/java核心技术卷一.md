@@ -4267,7 +4267,7 @@ Object invoke(Object proxy, Method method,Object[] args)
 
 要想创建一个代理对象， 需要使用 Proxy 类的 newProxylnstance 方法。 这个方法有三个参数：
 
-1. 一个类加栽器（class loader。) 作为 Java 安全模型的一部分， 对于系统类和从因特网 上下载下来的类，可以使用不同的类加载器。有关类加载器的详细内容将在卷 n 第 9 章中讨论。目前， 用 null 表示使用默认的类加载器。
+1. 一个类加栽器（class loader。) 作为 Java 安全模型的一部分， 对于系统类和从因特网 上下载下来的类，可以使用不同的类加载器。有关类加载器的详细内容将在卷 Ⅱ第 9 章中讨论。目前， 用 null 表示使用默认的类加载器。
 2. 一个 Class 对象数组， 每个元素都是需要实现的接口。
 3. 一个调用处理器。
 
@@ -4277,4 +4277,1571 @@ Object invoke(Object proxy, Method method,Object[] args)
 - 在程序运行期间，将用户接口事件与动作关联起来。
 - 为调试， 跟踪方法调用。
 
+```java
+import java.lang.reflect.*;
+import java.util.*;
+
+public class ProxyTest {
+
+    public static void main(String[] args) {
+        Object[] elements = new Object[1000];
+
+        for (int i = 0; i < elements.length; i++) {
+            Integer value = i + 1;
+            InvocationHandler handler = new TraceHandle(value);
+            Object proxy = Proxy.newProxyInstance(null, new Class[]{Comparable.class}, handler);
+            elements[i] = proxy;
+        }
+
+
+        Integer key = new Random().nextInt(elements.length)+1;
+
+        System.out.println(key);
+
+        int result = Arrays.binarySearch(elements, key);
+
+        if (result >= 0) {
+            System.out.println(elements[result]);
+        }
+
+    }
+}
+
+class TraceHandle implements InvocationHandler {
+
+    private Object target;
+
+    public TraceHandle(Object target) {
+        this.target = target;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        System.out.print(target);
+
+        System.out.print("." + method.getName() + "(");
+
+        if (args != null) {
+            for (int i = 0; i < args.length; i++) {
+                System.out.print(args[i]);
+                if (i < args.length - 1) {
+                    System.out.print(", ");
+                }
+            }
+        }
+        System.out.println(")");
+
+        return method.invoke(target, args);
+
+    }
+}
+```
+
+
+
 ### 6.5.3 代理的特性
+
+需要记住， 代理类是在程序运行过程中创建的。然而， 一旦被创建， 就变成了常规类，与虚拟机中的任何其他 类没有什么区别。
+
+所有的代理类都扩展于 Proxy 类。一个代理类只有一个实例域—调用处理器，它定义 在 Proxy 的超类中。 为了履行代理对象的职责，所需要的任何附加数据都必须存储在调用处 理器中。例如， 在给出的程序中，代理 Comparable 对象时，TraceHandler 包 装了实际的对象target。
+
+所有的代理类都覆盖了 Object 类中的方法 toString、 equals 和 hashCode。如同所有的代 理方法一样，这些方法仅仅调用了调用处理器的 invoke。Object 类中的其他方法（如 clone 和 getClass) 没有被重新定义。
+
+没有定义代理类的名字，Sun 虚拟机中的 Proxy类将生成一个以字符串 $Proxy 开头的类名。
+
+对于特定的类加载器和预设的一组接口来说，只能有一个代理类。 也就是说，如果使用 同一个类加载器和接口数组调用两次 newProxylustance方法的话， 那么只能够得到同一个类 的两个对象，也可以利用 getProxyClass方法获得这个类：
+
+```java
+Class proxyClass = getProxyClass(null,interfaces);
+```
+
+代理类一定是 public 和 final。如果代理类实现的所有接口都是 public， 代理类就不属于 某个特定的包；否则， 所有非公有的接口都必须属于同一个包，同时，代理类也属于这个包。
+
+可以通过调用 Proxy 类中的 isProxyClass 方法检测一个特定的 Class 对象是否代表一个代 理类。
+
+
+
+# 第7章 异常、断言和日志
+
+为了避免程序遇到异常崩溃，至少要做到以下几点：
+
+- 向用户通告错误；
+- 保存所有的工作结果；
+- 允许用户以妥善的形式退出程序；
+
+​       
+
+## 7.1 处理错误
+
+假设在一个 Java 程序运行期间出现了一个错误。这个错误可能是由于文件包含了错误 信息，或者网络连接出现问题造成的，也有可能是因为使用无效的数组下标， 或者试图使用 一个没有被赋值的对象引用而造成的。用户期望在出现错误时， 程序能够采用一些理智的行 为。如果由于出现错误而使得某些操作没有完成， 程序应该：
+
+- 返回到一种安全状态，并能够让用户执行一些其他的命令；或者
+- 允许用户保存所有操作的结果，并以妥善的方式终止程序
+
+几种错误类型：
+
+1. 用户输入错误；
+2. 设备错误；
+3. 物理限制；
+4. 代码错误；
+
+### 7.1.1 异常分类
+
+在 Java 程序设计语言中， 异常对象都是派生于 Throwable 类的一个实例。稍后还可以看 到，如果 Java 中内置的异常类不能够满足需求，用户可以创建自己的异常类。
+
+![image-20210116180533604](img/image-20210116180533604.png)
+
+Error 类层次结构描述了 Java 运行时系统的内部错误和资源耗尽错误。 **应用程序不应该 抛出这种类型的对象**。 如果出现了这样的内部错误， 除了通告给用户，并尽力使程序安全地 终止之外， 再也无能为力了。**这种情况很少出现。**
+
+在设计 Java 程序时， 需要关注 Exception 层次结构。**由 程序错误导致的异常属于 RuntimeException ; 而程序本身没有问题， 但由于像 I/O 错误这类 问题导致的异常属于其他异常；**（其实讨论的所有错误都发生在运行时）
+
+派生于 RuntimeException 的异常包含下面几种情况：
+
+- 数组的类型转换
+- 数组访问越界
+- 访问null指针
+
+不是派生于RuntimeException的异常包括：
+
+- 试图在文件尾部后面读取数据
+- 试图打开一个不存在的文件
+- 试图根据给定的字符串查找Class对象，而这个字符串表示的类并不存在
+
+“ 如果出现 RuntimeException 异常， 那么就一定是你的问题” 是一条相当有道理的规则。 应该通过检测数组下标是否越界来避免 ArraylndexOutOfBoundsException 异常；应该通过在 使用变量之前检测是否为 null 来杜绝 NullPointerException 异常的发生；
+
+如何处理不存在的文件呢？ 难道不能先检查文件是否存在再打开它吗？ 嗯， 这个文件有可能在你检查它是否存在之前就已经被删除了。因此，“ 是否存在” 取决于环境，而不只是 取决于你的代码。
+
+Java 语 言 规 范 将 派 生 于 Error 类 或 RuntimeException 类的所有异常称为非受查 ( unchecked ) 异常，所有其他的异常称为受查（ checked) 异常。这是两个很有用的术语，在 后面还会用到。 编译器将核查是否为所有的受査异常提供了异常处理器。
+
+### 7.1.2 声明受查异常
+
+如果遇到了无法处理的情况， 那么 Java 的方法可以抛出一个异常。这个道理很简单：一 个方法不仅需要告诉编译器将要返回什么值，还要告诉编译器有可能发生什么错误。例如， 一段读取文件的代码知道有可能读取的文件不存在， 或者内容为空，因此， 试图处理文件信 息的代码就需要通知编译器可能会抛出 IOException 类的异常。
+
+方法应该在其首部声明所有可能抛出的异常。
+
+```java
+ public FileInputStream(String name) throw FileNotFoundException
+```
+
+这个声明表示这个构造器将根据给定的 String 参数产生一个 FilelnputStream 对象，但也 有可能抛出一个 FileNotFoimdException 异常。如果发生了这种糟糕情况， 构造器将不会初始 化一个新的 FileInputStream 对象， 而是抛出一个 FileNotFoundException 类对象。 如果这个方 法真的抛出了这样一个异常对象，运行时系统就会开始搜索异常处理器， 以便知道如何处理 FileNotFoundException 对象„
+
+在自己编写方法时， 不必将所有可能抛出的异常都进行声明。至于什么时候需要在方法 中用 throws 子句声明异常， 什么异常必须使用 throws 子句声明， 需要记住在遇到下面 4 种 情况时应该抛出异常：
+
+1. 调用一个抛出受查异常的方法，例如，FileInputStream构造器
+2. 程序允许过程中发现错误，并且利用throw语句抛出一个受查异常
+3. 程序出现错误，例如，a[-1] = 0 会抛出一个ArrayIndexOutOfBoundsException这样的非受查异常
+4. Java虚拟机和运行时库出现的内部错误
+
+如果**出现前两种情况之一， 则必须告诉调用这个方法的程序员有可能抛出异常。** 为什 么？ 因为任何一个抛出异常的方法都有可能是一个死亡陷阱。 如果没有处理器捕获这个异 常，当前执行的线程就会结束。
+
+对于那些可能被他人使用的 Java 方法， 应该根据异常规范（ exception specification), 在 方法的首部声明这个方法可能抛出的异常。
+
+如果一个方法有可能抛出多个受查异常类型， 那么就必须在方法的首部列出所有的异常 类。每个异常类之间用逗号隔开。
+
+但是， **不需要声明 Java 的内部错误，即从 Error 继承的错误**。任何程序代码都具有抛出那些 异常的潜能， 而我们对其没有任何控制能力。
+
+同样，**也不应该声明从 RuntimeException 继承的那些非受查异常。**
+
+这些运行时错误完全在我们的控制之下。如果特别关注数组下标引发的错误，就应该将 更多的时间花费在修正程序中的错误上，而不是说明这些错误发生的可能性上。
+
+**总之，一个方法必须声明所有可能抛出的受查异常， 而非受查异常要么不可控制（ Error), 要么就应该避免发生（ RuntimeException)。如果方法没有声明所有可能发生的受查异常， 编 译器就会发出一个错误消息。**
+
+如果类中的一个方法声明将会抛出一个异常， 而这个异常是某个特定类的实例时， 则这个方法就有可能抛出一个这个类的异常， 或者这个类的任意一个子类的异常。 例 如，FilelnputStream 构造器声明将有可能抛出一个 IOExcetion 异常， 然而并不知道具体 是哪种 IOException 异常。它既可能是 IOException 异常，也可能是其子类的异常， 例如， FileNotFoundException。
+
+> **警告：**如果在子类中覆盖了超类的一个方法， 子类方法中声明的受查异常不能比超类方 法中声明的异常更通用 （也就是说， 子类方法中可以抛出更特定的异常， 或者根本不抛 出任何异常）。特别需要说明的是， 如果超类方法没有抛出任何受查异常， 子类也不能抛 出任何受查异常。例如， 如果覆盖 JComponent.paintComponent 方法， 由于超类中这个方 法没有抛出任何异常，所以， 自定义的 paintComponent 也不能抛出任何受查异常。
+
+### 7.1.3 如何抛出异常
+
+假设在程序代码中发生了一些很糟糕的事情。 一个名为 readData 的方法正在读取一个首 部具有下列信息的文件：`Content-length：1024`
+
+然而，读到 733 个字符之后文件就结束了。我们认为这是一种不正常的情况，希望抛出一个 异常。
+
+首先要决定应该抛出什么类型的异常。将上述异常归结为 IOException 是一种很好的选 择。仔细地阅读 Java API 文档之后会发现：EOFException 异常描述的是“ 在输人过程中， 遇 到了一个未预期的 EOF 后的信号”。这正是我们要抛出的异常。
+
+```java
+String readData(Scanner in) throw EOFException{
+    while(...){
+        if(!in.hasNext()){	//遇到EOF停止符
+            if(n < len) throw new EOFException();
+        }
+        ...
+    }
+    return s;
+}
+```
+
+EOFException 类还有一个含有一个字符串型参数的构造器。 这个构造器可以更加细致的 描述异常出现的情况。
+
+```java
+String gripe = "Content-length" + len +", Received: " + n;
+throw new EOFException(gripe);
+```
+
+在前面已经看到， 对于一个已经存在的异常类， 将其抛出非常容易，在这种情况下：
+
+1. 找到一个合适的异常类。
+2. 创建这个类的一个对象
+3. 将对象抛出。
+
+一旦方法抛出了异常， 这个方法就不可能返回到调用者。也就是说， 不必为返回的默认 值或错误代码担忧。
+
+### 7.1.4 创建异常类
+
+在程序中，可能会遇到任何标准异常类都没有能够充分地描述清楚的问题。 在这种情 况下，创建自己的异常类就是一件顺理成章的事情了。 我们需要做的只是定义一个派生于 Exception 的类，或者派生于 Exception 子类的类。例如， 定义一个派生于 IOException 的类。 **习惯上， 定义的类应该包含两个构造器， 一个是默认的构造器；另一个是带有详细描述信息 的构造器**（超类 Throwable 的 toString 方法将会打印出这些详细信息， 这在调试中非常有用)。
+
+```java
+import java.io.IOException;
+
+public class FileFormatException extends IOException {
+    public FileFormatException() { }
+
+    public FileFormatException(String message) {
+        super(message);
+    }
+}
+```
+
+![image-20210117095958502](img/image-20210117095958502.png)
+
+## 7.2 捕获异常
+
+到目前为止， 已经知道如何抛出一个异常。这个过程十分容易。只要将其抛出就不用理 踩了。当然， 有些代码必须捕获异常。捕获异常需要进行周密的计划。
+
+### 7.2.1 捕获异常
+
+如果某个异常发生的时候没有在任何地方进行捕获，那程序就会终止执行，并在控制台 上打印出异常信息， 其中包括异常的类型和堆栈的内容。对于图形界面程序（applet 和应用 程序，) 在捕获异常之后，也会打印出堆桟的信息，但程序将返回到用户界面的处理循环中 (在调试 GUI 程序时， 最好保证控制台窗口可见，并且没有被最小化。
+
+要想捕获一个异常， 必须设置 try/catch语句块。
+
+如果在 try语句块中的任何代码抛出了一个在 catch 子句中说明的异常类， 那么
+
+1. 程序将跳过 try语句块的其余代码。
+2. 程序将执行 catch 子句中的处理器代码。
+
+如果在 try 语句块中的代码没有拋出任何异常，那么程序将跳过 catch 子句。
+
+```java
+public void read(String fileName) {
+    try {
+        InputStream in = new FileInputStream(fileName);
+        int b;
+        while ((b = in.read()) != -1) {
+            ...
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+```
+
+需要注意的是，try 语句中的大多数代码都很容易理解： 读取并处理字节， 直到遇到文 件结束符为止。正如在 Java API 中看到的那样， read 方法有可能拋出一个 IOException 异常。 在这种情况下，将跳出整个 while 循环，进入 catch 子旬，并生成一个栈轨迹。对于一个普通 的程序来说， 这样处理异常基本上合乎情理。还有其他的选择吗？
+
+**通常， 最好的选择是什么也不做，而是将异常传递给调用者。**如果 read 方法出现了错 误, 就 让 read方法的调用者去操心！如果采用这种处理方式，就必须声明这个方法可能会拋 出一个 IOException。
+
+```
+public void read(String fileName) throws IOException{
+    InputStream in = new FileInputStream(fileName);
+    int b;
+    while ((b = in.read()) != -1) {
+        ...
+    }
+}
+```
+
+请记住， 编译器严格地执行 throws 说明符。 **如果调用了一个抛出受查异常的方法，就必 须对它进行处理， 或者继续传递。**
+
+### 7.2.2 捕获多个异常
+
+在一个 try 语句块中可以捕获多个异常类型，并对不同类型的异常做出不同的处理。可 以按照下列方式为每个异常类型使用一个单独的 catch 子句：
+
+```java
+try{
+    ...
+} catch(FileNotFoundException e){
+    ...
+} catch(UnKownHostException e){
+    ...
+} catch(IOException e){
+    ...
+}
+```
+
+异常对象可能包含与异常本身有关的信息。要想获得对象的更多信息， 可以试着使用`e.getMessage()`得到详细的错误信息（如果有的话，) 或者使用`e.getClass().getName()` 得到异常对象的实际类型。
+
+在 Java SE 7中，同一个 catch 子句中可以捕获多个异常类型。例如，假设对应缺少文件 和未知主机异常的动作是一样的，就可以合并 catch 子句，只有当捕获的异常类型彼此之间不存在子类关系时才需要这个特性：
+
+```java
+try{
+    ...
+} catch(FileNotFoundException | UnKownHostException e){
+    ...
+} catch(IOException e){
+    ...
+}
+```
+
+> **注释：**捕获多个异常时， 异常变量隐含为 final 变量，不能在句体中复制给它。
+
+### 7.2.3 再次抛出异常与异常链
+
+在 catch 子句中可以抛出一个异常，这样做的目的是改变异常的类型，： 如果开发了一个 供其他程序员使用的子系统， 那么，用于表示子系统故障的异常类型可能会产生多种解释。 ServletException 就是这样一个异常类型的例子。执行 servlet 的代码可能不想知道发生错误的 细节原因， 但希望明确地知道 servlet 是否有问题。
+
+下面给出了捕获异常并将它再次抛出的基本方法：
+
+```java
+try {
+    access the database
+} catch (SQLException e) {
+    throw new ServletException("database error:" + e.getMessage());
+}
+```
+
+这里，ServleException 用带有异常信息文本的构造器来构造。 不过，可以有一种更好的处理方法，并且将原始异常设置为新异常的“ 原因”
+
+```java
+try {
+    access the database
+} catch (SQLException e) {
+    Throwable se = new ServletException("database error");
+    se.initCause(e);
+    throw se;
+}
+```
+
+当捕获到异常时， 就可以使用下面这条语句重新得到原始异常：
+
+```java
+Throwable e = se.getCause();
+```
+
+强烈建议使用这种包装技术。这样可以让用户抛出子系统中的高级异常，而不会丢失原始异 常的细节。
+
+> **提示：**如果在一个方法中发生了一个受查异常， 而不允许抛出它， 那么包装技术就十分 有用。我们可以捕获这个受查异常，并将它包装成一个运行时异常。
+
+### 7.2.4 finally子句
+
+当代码抛出一个异常时， 就会终止方法中剩余代码的处理，并退出这个方法的执行。如 果方法获得了一些本地资源，并且只有这个方法自己知道，又如果这些资源在退出方法之前 必须被回收，那么就会产生资源回收问题。Java 使用finally 子句进行资源回收。
+
+不管是否有异常被捕获，finally 子句中的代码都被执行。
+
+try 语句可以只有 finally 子句，而没有 catch 子句。
+
+```java
+InputStream in = ...;
+try{
+    ...
+} finally{
+    in.close();
+}
+```
+
+无论在 try 语句块中是否遇到异常，finally 子句中的 in.close() 语句都会被执行。当然, 如果真的遇到一个异常，这个异常将会被重新抛出，并且必须由另一个 catch 子句捕获。
+
+事实上， 我们认为在需要关闭资源时， 用这种方式使用 finally 子句是一种不错的选择。
+
+### 7.2.5 带资源的try语句
+
+假设资源属于一个实现了 AutoCloseable 接口的类，Java SE 7 为上面这种需要回收资源的代码模式提供了一 个很有用的快捷方式。AutoCloseable 接口有一个方法：
+
+```java
+void close() throw Exception
+```
+
+> **注释：**另外，还有一个Closeable接口。这是AutoCloseable 的子接口， 也包令 •个 close 方法。不过， 这个方法声明为抛出一个 IOException。
+
+带资源的 try 语句（try-with-resources) 的最简形式为：
+
+```java
+try(Resource res = ...){
+    ...
+}
+```
+
+try块退出时，会自动调用 res.dose() 方法。
+
+上一节已经看到，如果 try 块抛出一个异常， 而且 close 方法也抛出一个异常，这就会带 来一个难题，. 带资源的 try 语句可以很好地处理这种情况。原来的异常会重新抛出，而 close 方法抛出的异常会“ 被抑制％ 这些异常将自动捕获，并由 addSuppressed 方法增加到原来的 异常。 如果对这些异常感兴趣， 可以调用 getSuppressed 方法，它会得到从 close 方法抛出并 被抑制的异常列表。
+
+### 7.2.6 分析堆栈轨迹元素
+
+1. 可以使用Throwable类的printStackTrace方法访问堆栈轨迹的文本描述信息；
+2. 一种更灵活的方法是使用 getStackTrace 方法， 它会得到 StackTraceElement 对象的一个 数组， 可以在你的程序中分析这个对象数组。
+   StackTraceElement 类含有能够获得文件名和当前执行的代码行号的方法， N时， 还含有 能够获得类名和方法名的方法。toString 方法将产生一个格式化的字符串， 其屮包含所获得 的信息。
+3. 静态的 Thread.getAllStackTrace 方法， 它可以产生所有线程的堆栈轨迹
+
+```java
+package Unit7;
+
+import java.util.Scanner;
+
+public class StackTraceTest {
+
+    public static int fac(int n) {
+        System.out.println("factorial(" + n + "):");
+        Throwable t = new Throwable();
+        StackTraceElement[] frames = t.getStackTrace();
+        for (StackTraceElement f : frames) {
+            System.out.println(f);
+        }
+
+        int r;
+        if (n <= 1) {
+            r = 1;
+        } else {
+            r = n * fac(n - 1);
+        }
+        System.out.println("return " + r);
+        return r;
+    }
+
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        System.out.print("Enter n: ");
+        int n = in.nextInt();
+        fac(n);
+    }
+}
+```
+
+输出：
+
+```
+Enter n: 3
+factorial(3):
+Unit7.StackTraceTest.fac(StackTraceTest.java:9)
+Unit7.StackTraceTest.main(StackTraceTest.java:29)
+factorial(2):
+Unit7.StackTraceTest.fac(StackTraceTest.java:9)
+Unit7.StackTraceTest.fac(StackTraceTest.java:19)
+Unit7.StackTraceTest.main(StackTraceTest.java:29)
+factorial(1):
+Unit7.StackTraceTest.fac(StackTraceTest.java:9)
+Unit7.StackTraceTest.fac(StackTraceTest.java:19)
+Unit7.StackTraceTest.fac(StackTraceTest.java:19)
+Unit7.StackTraceTest.main(StackTraceTest.java:29)
+return 1
+return 2
+return 6
+
+Process finished with exit code 0
+```
+
+![image-20210117160040312](img/image-20210117160040312.png)
+![image-20210117160054051](img/image-20210117160054051.png)
+
+![image-20210117160209481](img/image-20210117160209481.png)
+
+## 7.3 使用异常机制的技巧
+
+1. **异常处理不能代替简单的测试；**与执行简单的测试相比， 捕获异常所花费的时间大大超过了前者， 因此使用 异常的基本规则是：只在异常情况下使用异常机制。
+
+2. **不要过分地细化异常；**有必要将整个任务包装在一个 try语句块中，这样， 当任何一个操作出现问题时， 整个任务都可以取消。
+
+3. **利用异常层次结构；**
+   不要只抛出 RuntimeException 异常。应该寻找更加适当的子类或创建自己的异常类。
+   不要只捕获 Thowable 异常， 否则，会使程序代码更难读、 更难维护。
+   考虑受查异常与非受查异常的区别。 已检查异常本来就很庞大，不要为逻辑错误抛出这 些异常。
+   将一种异常转换成另一种更加适合的异常时不要犹豫。
+
+4. **不要压制异常；**
+   在 Java 中，往往强烈地倾向关闭异常。如果编写了一个调用另一个方法的方法，而这个 方法有可能 100 年才抛出一个异常， 那么， 编译器会因为没有将这个异常列在 throws 表中产 生抱怨。而没有将这个异常列在 throws 表中主要出于编译器将会对所有调用这个方法的方法 进行异常处理的考虑。因此，应该将这个异常关闭：
+
+   ```java
+   public Image loadImage(String s){
+       try{
+           //code that threatens to throw checked exceptions
+       } catch(Exception e){}
+   }
+   ```
+
+   现在，这段代码就可以通过编译了。除非发生异常，否则它将可以正常地运行。即使发 生了异常也会被忽略。如果认为异常非常重要，就应该对它们进行处理。
+
+5. **在检测错误时，“ 苛刻 ” 要比放任更好;**当检测到错误的时候， 有些程序员担心抛出异常。在用无效的参数调用一个方法时，返 回一个虚拟的数值， 还是抛出一个异常， 哪种处理方式更好？ 例如， 当栈空时，Stack.p0p 是 返回一个 null, 还是抛出一个异常？ 我们认为：在出错的地方抛出一个 EmptyStackException 异常要比在后面抛出一个 NullPointerException 异常更好。
+
+6. **不要羞于传递异常;**让高层次的方法通知用户发生了错误， 或者放弃不成功的命令更加适宜。
+
+规则5，6可以归纳为”早抛出，晚捕获“。
+
+## 7.4 使用断言
+
+### 7.4.1 断言的概念
+
+假设确信某个属性符合要求， 并且代码的执行依赖于这个属性。例如， 需要计算
+
+```java
+double y = Math.sqrt(x);
+```
+
+我们确信，这里的 X 是一个非负数值。原因是：X 是另外一个计算的结果，而这个结果 不可能是负值；或者 X 是一个方法的参数，而这个方法要求它的调用者只能提供一个正整数。 然而，还是希望进行检查， 以避免让“ 不是一个数” 的数值参与计算操作。当然，也可以抛 出一个异常：
+
+```java
+if(x<0) throw new IllegalArgumentException("x < 0");
+```
+
+但是这段代码会一直保留在程序中， 即使测试完毕也不会自动地删除。如果在程序中含 有大量的这种检查，程序运行起来会相当慢。
+
+**断言机制允许在测试期间向代码中插入一些检査语句。当代码发布时，这些插人的检测 语句将会被自动地移走。**
+
+Java 语言引人了关键字 assert。这个关键字有两种形式：
+
+```java
+assert 条件:
+//and
+assert 条件:表达式;
+```
+
+这两种形式都会对条件进行检测， 如果结果为 false, 则抛出一个 AssertionError 异常。 在第二种形式中，表达式将被传入AssertionError 的构造器， 并转换成一个消息字符串。
+
+> **注释：**“ 表达式” 部分的唯一目的是产生一个消息字符串。AssertionError 对象并不存储 表达式的值， 因此， 不可能在以后得到它。正如 JDK 文档所描述的那样： 如果使用表达 式的值， 就会鼓励程序员试图从断言中恢复程序的运行， 这不符合断言机制的初衷。
+
+### 7.4.2 启用和禁用断言
+
+**在默认情况下， 断言被禁用。可以在运行程序时用 -enableassertions 或 -ea 选项启用：**
+
+```java
+java -enableassertions MyApp
+```
+
+需要注意的是， 在启用或禁用断言时不必重新编译程序。启用或禁用断言是类加载器 ( class loader) 的功能。当断言被禁用时， 类加载器将跳过断言代码， 因此，不会降低程序运 行的速度。
+
+也可以在某个类或整个包中使用断言， 例如：
+
+```java
+java -ea:MyClass -ea:com.example.mylib...MyApp		
+```
+
+这条命令将开启 MyClass 类以及在 com.mycompany.mylib 包和它的子包中的所有类的断 言。选项 -ea 将开启默认包中的所有类的断言。
+
+**也可以用选项 -disableassertions 或 -da 禁用某个特定类和包的断言：**
+
+```java
+java -ea:... -da:MyClass MyApp		
+```
+
+有些类不是由类加载器加载， 而是直接由虚拟机加载。可以使用这些开关有选择地启用 或禁用那些类中的断言。
+
+然而， 启用和禁用所有断言的 -ea 和 -da 开关不能应用到那些没有类加载器的“ 系统类” 上。**对于这些系统类来说， 需要使用 -enablesystemassertions/-esa 开关启用断言。**
+
+### 7.4.3 使用断言完成参数检查
+
+在Java中，给出了3种处理系统错误的机制：
+
+- 抛出一个异常
+- 日志
+- 使用断言
+
+什么时候使用断言，需要记住：
+
+- 断言失败是致命的、不可恢复的错误
+- 断言检查只用于开发和测试阶段
+
+因此，不应该使用断言向程序的其他部分通告发生了可恢复性的错误，或者，不应该作 为程序向用户通告问题的手段。**断言只应该用于在测试阶段确定程序内部的错误位置。**
+
+如果遇到绝对不能使用null值的参数，需要使用断言，比如遇到数组a不能为null，则在开头使用断言：
+
+```java
+assert a != null;
+```
+
+### 7.4.4 为文档假设使用断言
+
+原例子：
+
+```java
+if(i%3 == 0){
+    ...
+}else if(i%3 == 1){
+    ...
+}else{
+    //表示i%3 == 2
+    ...
+}
+```
+
+使用断言进行优化：
+
+```java
+//由于实际上i都是非负，所以需要断言
+assert i>= 0;
+if(i%3 == 0){
+    ...
+}else if(i%3 == 1){
+    ...
+}else{
+    assert i%3 == 2;
+    ...
+}
+```
+
+![image-20210117181257810](img/image-20210117181257810.png)
+
+## 7.5 记录日志
+
+相比于`System.out.println()`，使用日志的优点：
+
+•可以很容易地取消全部日志记录，或者仅仅取消某个级别的日志，而且打开和关闭这 个操作也很容易。 
+
+•可以很简单地禁止日志记录的输出， 因此，将这些日志代码留在程序中的开销很小。
+
+•日志记录可以被定向到不同的处理器， 用于在控制台中显示， 用于存储在文件中等。 
+
+•日志记录器和处理器都可以对记录进行过滤。过滤器可以根据过滤实现器制定的标准 丢弃那些无用的记录项。
+
+•日志记录可以采用不同的方式格式化，例如，纯文本或 XML。 
+
+•应用程序可以使用多个日志记录器， 它们使用类似包名的这种具有层次结构的名字， 例如， com.mycompany.myapp
+
+•在默认情况下，日志系统的配置由配置文件控制。如果需要的话， 应用程序可以替换 这个配置。
+
+### 7.5.1 基本日志
+
+1. 要生成简单的日志记录，可以使用全局日志记录器（global logger) 并调用其 info 方法：
+
+   ```java
+   Logger.getGlobal().info("new Info");
+   ```
+
+   输出：
+
+   ```
+   一月 17, 2021 6:22:34 下午 Unit7.test main
+   信息: new Info
+   ```
+
+2. 使用setLevel方法设置级别，可以设置为取消所有的日志：
+
+   ```java
+   Logger.getGlobal().setLevel(Level.OFF);
+   ```
+
+### 7.5.2 高级日志
+
+在一 个专业的应用程序中，不要将所有的日志都记录到一个全局日志记录器中，而是可以自定义 日志记录器。
+
+可以调用 getLogger 方法创建或获取记录器：
+
+```java
+public static final Logger myLogger = Logger.getLogger("com.example.myapp");
+```
+
+> **提示：**未被任何变量引用的日志记录器可能会被垃圾回收。 为了防止这种情况发生，要 像上面的例子中一样， 用一个静态变量存储日志记录器的一个引用。
+
+通常， 有以下 7 个日志记录器级别（级别从高到低）：
+
+- SEVER
+- WARING
+- INFO
+- CONFIG
+- FINE
+- FINER
+- FINSET
+
+在默认情况下，只记录前三个级别。 也可以设置其他的级別。例如，
+
+```java
+Logger.setLevel(Level.FINE);
+```
+
+现在， FINE 和更高级别的记录都可以记录下来。
+
+另外， 还可以使用 Level.ALL 开启所有级别的记录， 或者使用 Level.OFF 关闭所有级别 的记录。
+
+对于所有的级别有下面几种记录方法：
+
+```java
+logger.warning(message);
+logger.fine(message);
+```
+
+ 也可以用log方法指定级别：
+
+```java
+logger.log(Level.FINE,message);
+```
+
+默认的日志记录将显示包含日志调用的类名和方法名， 如同堆栈所显示的那样。但是, 如果虚拟机对执行过程进行了优化，就得不到准确的调用信息。此时，可以调用 logp 方法获 得调用类和方法的确切位置， 这个方法的签名为：
+
+```java
+void logp(Level l,String className,String methodName,String message)
+```
+
+使用entering和exiting方法会生成FINER级别和以字符串ENTERY和RETURN开始的日志记录
+
+记录日志的常见用途是记录那些不可预料的异常。可以使用下面两个方法提供日志记录 中包含的异常描述内容。
+
+```java
+void throwing(String className,String methodName,Throwable t);
+void log(Level l,String message,Throwable t);
+```
+
+典型的用法：
+
+```java
+Logger l = Logger.getGlobal();
+if (true) {
+    IOException exception = new IOException("IO exception");
+    l.throwing("Unit7.test", "main", exception);		//FINER级别的记录
+    throw exception;
+}
+```
+
+```java
+try {
+    ...
+} catch (IOException e) {
+    Logger.getLogger("Unit7.test").log(Level.WARNING, "Reading Image", e);
+}
+```
+
+### 7.5.3 修改日志管理器配置
+
+可以通过编辑配置文件来修改日志系统的各种属性。在默认情况下，配置文件存在于：
+
+jre/lib/logging.properties
+
+要想使用另一个配置文件， 就要将 java.util.logging.config.file 特性设置为配置文件的存 储位置， 并用下列命令启动应用程序：
+
+java -Djava.util.logging.config. file-configFile MainClass
+
+> **警告：**日志管理器在 VM 启动过程中初始化， 这在 main 执行之前完成。 如果在 main 中调用 System.setProperty("java.util_ logging.config_ file"，file), 也 会 调 用 LogManager. readConfiguration() 来重新初始化曰志管理器
+
+要想修改默认的日志记录级别， 就需要编辑配置文件，并修改以下命令行
+
+```
+.level = INFO
+```
+
+可以通过添加以下内容来指定自己的日志记录级别
+
+```
+com.example.myapp.level = FINE
+```
+
+也就是说，在日志记录器名后面添加后缀 .level。
+
+在稍后可以看到，日志记录并不将消息发送到控制台上，这是处理器的任务。另外，处 理器也有级别。要想在控制台上看到 FINE 级别的消息， 就需要进行下列设置。
+
+```
+java.util.logging.ConsoleHandler.level = FINE
+```
+
+日志属性文件由 java.util.logging.LogManager 类处理。可以通过将 java.util.logging,manager 系统属性设置为某个子类的名字来指定一个不同的日志管理器。 另外， 在保存 标准日志管理器的同时， 还可以从日志属性文件跳过初始化。还有一种方式是将 java, util.logging.config.class 系统属性设置为某个类名，该类再通过其他方式设定日志管理器 属性；
+
+### 7.5.4 本地化
+
+即支持多语言
+
+### 7.5.5 处理器
+
+在默认情况下， 日志记录器将记录发送到 ConsoleHandler 中， 并由它输出到 System.err 流中。特别是，日志记录器还会将记录发送到父处理器中，而最终的处理器（命名为“ ” ）有 一个 ConsoleHandler。
+
+与日志记录器一样，处理器也有日志记录级别。对于一个要被记录的日志记录，它的日 志记录级别必须高于日志记录器和处理器的阈值。日志管理器配置文件设置的默认控制台处 理器的日志记录级别为
+
+```
+java.uti1.1ogging.ConsoleHandler.level =INF0
+```
+
+要想记录 FINE 级别的日志，就必须修改配置文件中的默认日志记录级别和处理器级别。 另外，还可以绕过配置文件，安装自己的处理器。
+
+```java
+Logger logger = Logger.getLogger("Unit7.test");
+logger.setLevel(Level.FINE);
+logger.setUseParentHandlers(false);
+Handler handler = new ConsoleHandler();
+handler.setLevel(Level.FINE);
+logger.addHandler(handler);
+System.out.println(Arrays.toString(logger.getHandlers()));;
+```
+
+在默认情况下， 日志记录器将记录发送到自己的处理器和父处理器。我们的日志记录 器是原始日志记录器（命名为“ ”）的子类， 而原始日志记录器将会把所有等于或高于 INFO级別的记录发送到控制台。然而， 我们并不想两次看到这些记录。 鉴于这个原因，应该将 useParentHandlers 设置为 false。
+
+要想将日志记录发送到其他地方， 就要添加其他的处理器。日志 API 为此提供了两个很 有用的处理器， 一个是 FileHandler ; 另 "h是 SocketHandler。SocketHandler 将记录发送到 特定的主机和端口：， 而更令人感兴趣的是 FileHandler, 它可以收集文件中的记录。
+
+可以像下面这样直接将记录发送到默认文件的处理器：
+
+```java
+FileHandle handler = new FileHandler();
+logger.addHandler(handler);
+```
+
+这些记录被发送到用户主目录的 javan.log 文件中， n 是文件名的唯一编号。 如果用户系 统没有主目录（ 例如， 在 Windows95/98/Me，) 文件就存储在 C:\Window 这样的默认位置上。 在默认情况下， 记录被格式化为 XML。
+
+可以通过设置 H 志管理器配置文件中的不同参数（请参看表 7-1 ，) 或者利用其他的构造 器 （请参看本节后面给出的 APf 注释）来修改文件处理器的默认行为。
+
+![image-20210117215618898](img/image-20210117215618898.png)
+
+也有可能不想使用默认的日志记录文件名， 因此， 应该使用另一种模式， 例如， ％h/ myapp.log ( 有关模式变量的解释请参看表 7-2 。
+
+![image-20210117215656570](img/image-20210117215656570.png)
+
+还可以通过扩展 Handler 类或 StreamHandler 类自定义处理器。
+
+如果希望编写更加复杂的流处理器，就应该扩展 Handler 类， 并自定义 publish、 flush 和 close 方法。
+
+### 7.5.6 过滤器
+
+在默认情况下， 过滤器根据日志记录的级别进行过滤。每个日志记录器和处理器都可以 有一个可选的过滤器来完成附加的过滤。另外，可以通过实现 Filter 接口并定义`isLoggable`方法来 自定义过滤器。
+
+要想将一个过滤器安装到一个日志记录器或处理器中，只需要调用 setFilter 方法就可以 了。 注意，同一时刻最多只能有一个过滤器。
+
+### 7.5.7 格式化器
+
+ConsoleHandler 类和 FileHandler 类可以生成文本和 XML 格式的日志记录。但是， 也可 以自定义格式。这需要扩展 Formatter 类并覆盖`fomat`方法；
+
+最后，调用 setFormatter 方法将格式化器安装到处理器中。
+
+### 7.5.8 日志记录说明
+
+日志功能最常用的操作：
+
+1. 为一个简单的应用程序， 选择一个日志记录器，并把日志记录器命名为与主应用程 序包一样的名字，例如，com.mycompany.myprog, 这是一种好的编程习惯。 另外，可以通过 调用下列方法得到日志记录器。
+
+   ```java
+   Logger logger = Logger.getLogger("com.example.test");
+   //在类中更常用
+   private static final Logger logger = Logger.getLogger("com.example.test");
+   ```
+
+2. 默认的日志配置将级别等于或高于 INFO 级别的所有消息记录到控制台。用户可以覆 盖默认的配置文件。但是正如前面所述，改变配置需要做相当多的工作。因此，最好在应用 程序中安装一个更加适宜的默认配置。
+   下列代码确保将所有的消息记录到应用程序特定的文件中。可以将这段代码放置在应用 程序的 main方法中。
+
+   ```java
+   if (System.getProperty("java.util.logging.config.class") == null
+           && System.getProperty("java.util.logging.config.file") == null) {
+       try {
+           Logger.getLogger("").setLevel(Level.ALL);
+           final int LOG_ROTATION_COUNT = 10;
+           Handler handler = new FileHandler("%h/myApp.log", 0, LOG_ROTATION_COUNT);
+           Logger.getLogger("").addHandler(handler);
+       } catch (IOException e) {
+           logger.log(Level.SEVERE, "不能创建FileHandler", e);
+       }
+   }
+   ```
+
+3. 现在，可以记录自己想要的内容了。但需要牢记：所有级别为 INFO、 WARNING 和 SEVERE 的消息都将显示到控制台上o 因此， 最好只将对程序用户有意义的消息设置为这几 个级别。将程序员想要的日志记录，设定为 FINE 是一个很好的选择。
+   当调用 System.out.println 时， 实际上生成了下面的日志消息：
+
+   ```java
+   logger.fine("File open dialog canceled");
+   ```
+
+   记录那些不可预料的异常也是一个不错的想法，例如：
+
+   ```java
+   try{
+       ...
+   } catch(SomeException e){
+       logger.log(Level.FINE,"explanation",e);
+   }
+   ```
+
+
+
+下列程序利用上述说明可实现：日志记录消息也显示在日志窗口中。
+
+```java
+package Unit7;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.logging.*;
+
+public class LoggingImageViewer {
+
+    public static void main(String[] args) {
+
+        if (System.getProperty("java.util.logging.config.class") == null
+                && System.getProperty("java.util.logging.config.file") == null) {
+            try {
+                Logger.getLogger("com.peachLuis").setLevel(Level.ALL);
+                final int LOG_ROTATION_COUNT = 10;
+                String s = System.getProperty("user.dir");
+                Handler handler = new FileHandler(s+"\\myApp.log", 0, LOG_ROTATION_COUNT);
+                Logger.getLogger("com.peachLuis").addHandler(handler);
+            } catch (IOException e) {
+                Logger.getLogger("com.peachLuis").log(Level.SEVERE, "不能创建FileHandler", e);
+            }
+        }
+
+        EventQueue.invokeLater(()->{
+            Handler windowHandler = new WindowHandler();
+            windowHandler.setLevel(Level.ALL);
+            Logger.getLogger("com.peachLuis").addHandler(windowHandler);
+
+            JFrame frame = new ImageViewFrame();
+            frame.setTitle("LoggingImageViewer");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+            Logger.getLogger("com.peachLuis").fine("show frame");
+            frame.setVisible(true);
+        });
+    }
+}
+
+/**
+ * 展示Image的Frame
+ */
+class ImageViewFrame extends JFrame {
+    public static final int DEFAULT_WIDTH = 1000;
+    public static final int DEFAULT_HEIGHT = 1000;
+
+    private JLabel label;
+    public static Logger logger = Logger.getLogger("com.peachLuis");
+
+    public ImageViewFrame() {
+        logger.entering("ImageViewFrame", "<init>");
+        setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+
+        JMenuBar menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
+
+        JMenu menu = new JMenu("File");
+        menuBar.add(menu);
+
+        JMenuItem openItem = new JMenuItem("Open");
+        menu.add(openItem);
+        openItem.addActionListener(new FileOpenListener());
+
+        JMenuItem exitItem = new JMenuItem("Exit");
+        menu.add(exitItem);
+        exitItem.addActionListener(e -> {
+            logger.fine("Exiting.");
+            System.exit(0);
+        });
+
+        //use a label to display the images
+        label = new JLabel();
+        add(label);
+        logger.exiting("ImageViewerFrame", "<init>");
+    }
+
+    private class FileOpenListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            logger.entering("ImageViewerFrame.FileOpenListener", "actionPerformed", e);
+
+            //设置选择器
+            JFileChooser chooser = new JFileChooser();
+            chooser.setCurrentDirectory(new File("."));
+
+            //接受所有.jpg文件
+            chooser.setFileFilter(new FileFilter() {
+                @Override
+                public boolean accept(File f) {
+                    return f.getName().toLowerCase().endsWith(".jpg") || f.isDirectory();
+                }
+
+                @Override
+                public String getDescription() {
+                    return "JPG Images";
+                }
+
+            });
+
+            //显示file chooser dialog
+            int r = chooser.showOpenDialog(ImageViewFrame.this);
+
+            //如果接受了图片，则将其显示到 label
+            if (r == JFileChooser.APPROVE_OPTION) {
+                String name = chooser.getSelectedFile().getPath();
+                logger.log(Level.FINE, "Reading file {0}", name);
+                label.setIcon(new ImageIcon(name));
+            } else {
+                logger.fine("File open dialog canceled");
+            }
+            logger.exiting("ImageViewerFrame.FileOpenListener", "actionPerformed");
+        }
+    }
+
+}
+
+/**
+ * 在窗口中显示log的Handler
+ */
+class WindowHandler extends StreamHandler{
+    private JFrame frame;
+
+    public WindowHandler() {
+        frame = new JFrame();
+        final JTextArea output = new JTextArea();
+        output.setEditable(false);
+        frame.setSize(500, 500);
+        frame.add(new JScrollPane(output));
+        frame.setFocusableWindowState(false);
+        frame.setVisible(true);
+        setOutputStream(new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+
+            }
+
+            @Override
+            public void write(byte[] b, int off, int len) throws IOException {
+                output.append(new String(b, off, len));
+            }
+        });
+    }
+
+    /**
+     * 保证完成一次log就flush
+     * @param record
+     */
+    @Override
+    public synchronized void publish(LogRecord record) {
+        if (!frame.isVisible()) return;
+        super.publish(record);
+        flush();
+    }
+}
+
+```
+
+API：
+
+![image-20210118144107760](img/image-20210118144107760.png)
+![image-20210118144139027](img/image-20210118144139027.png)
+![image-20210118144159065](img/image-20210118144159065.png)
+![image-20210118144222499](img/image-20210118144222499.png)
+![image-20210118144240028](img/image-20210118144240028.png)
+![image-20210118144257365](img/image-20210118144257365.png)
+![image-20210118144312728](img/image-20210118144312728.png)
+![image-20210118144341790](img/image-20210118144341790.png)
+![image-20210118144358011](img/image-20210118144358011.png)
+![image-20210118144445554](img/image-20210118144445554.png)
+![image-20210118144457264](img/image-20210118144457264.png)
+
+## 7.6 调试技巧
+
+1. 使用print方法定位错误；
+
+2. 使用log定位错位；
+
+3. 每一个类中使用main方法定位错误；
+
+4. 日志代理（ logging proxy) 是一个子类的对象， 它可以截获方法调用， 并进行日志记 录，然后调用超类中的方法。例如，如果在调用 Random 类的 nextDouble 方法时出现了问 题， 就可以按照下面的方式，以匿名子类实例的形式创建一个代理对象：
+
+   ```java
+   Random ge = new Random() {
+       @Override
+       public double nextDouble() {
+           double result = super.nextDouble();
+           System.out.println("nextDouble:" + result);
+           return result;
+       }
+   };
+   ```
+
+   当调用 nextDouble 方法时， 就会产生一个日志消息。要想知道谁调用了这个方法， 就要生成 一个堆栈轨迹。
+
+5. 利 用 Throwable 类提供的 printStackTmce 方法，可以从任何一个异常对象中获得堆栈 情况。. 下面的代码将捕获任何异常，打印异常对象和堆栈轨迹， 然后，重新拋出异常， 以便 能够找到相应的处理器。
+
+   ```java
+   try{
+       ...
+   } catch (Throwable t){
+       t.printStackTrace();
+       throw t;
+   }
+   
+   ```
+
+   不一定要通过捕获异常来生成堆栈轨迹。只要在代码的任何位置插入下面这条语句就可 以获得堆栈轨迹：
+
+   ```java
+   Thread.dumpStack();
+   ```
+
+6. 一般来说， 堆栈轨迹显示在 System.err 上。也可以利用 printStackTrace(PrintWriter s) 方法将它发送到一个文件中。另外， 如果想记录或显示堆栈轨迹， 就可以采用下面的方式， 将它捕获到一个字符串中：
+
+   ```java
+   StringWriter out = new StringWriter();
+   new Throwable().printStackTrace(new PrintWriter(out));
+   String des = out.toString();
+   ```
+
+7. 通常， 将一个程序中的错误信息保存在一个文件中是非常有用的。然而，错误信息 被发送到 System.err 中，而不是 System.out 中。因此，不能够通过运行下面的语句获取它们：
+
+   ```
+   java MyApp > errors.txt
+   ```
+
+   而是采用下面的方式捕获错误流：
+
+   ```java
+   java MyApp 2> errors.txt
+   ```
+
+   要想在同一个文件中同时捕获 System.err和 System.out, 需要使用下面这条命令
+
+   ```
+   java MyApp 1> errors.txt 2>&1
+   ```
+
+   这条命令将工作在 bash 和 Windows shell 中。
+
+8. 让非捕获异常的堆栈轨迹出现在 System.err 中并不是一个很理想的方法。如果在客户 端偶然看到这些消息，则会感到迷惑，并且在需要的时候也无法实现诊断目的。比较好的方 式是将这些内容记录到一个文件中。可以调用静态的 Thread.setDefaultUncaughtExceptionHan dler 方法改变非捕获异常的处理器：
+
+   ```java
+   Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+       @Override
+       public void uncaughtException(Thread t, Throwable e) {
+           //保存信息到log文件中
+       }
+   });
+   ```
+
+9. 要想观察类的加载过程， 可以用 -verbose 标志启动 Java 虚拟机。有时候， 这种方法有助于诊断由于类路径引发的问题。
+
+10. -Xlint 选项告诉编译器对一些普遍容易出现的代码问题进行检査。
+    ![image-20210118150713946](img/image-20210118150713946.png)
+
+11. java 虚拟机增加了对 Java 应用程序进行监控（monitoring) 和管理 （management) 的 支持。它允许利用虚拟机中的代理装置跟踪内存消耗、 线程使用、 类加载等情况。这个功能 对于像应用程序服务器这样大型的、 长时间运行的 Java 程序来说特别重要。下面是一个能够 展示这种功能的例子：JDK 加载了一个称为jconsole 的图形工具，可以用于显示虚拟机性能 的统计结果， 如图 7-3 所示。找出运行虚拟机的操作系统进程的 ID。在 UNIX/Linux 环境下， 运行 ps 实用工具， 在 Windows 环境下，使用任务管理器。然后运行 jconsole 程序：
+
+    ```
+    jconsole processID
+    ```
+
+12. 可以使用 jmap 实用工具获得一个堆的转储， 其中显示了堆中的每个对象。使用命 令如下：
+    ![image-20210118151201902](img/image-20210118151201902.png)
+    然后，通过浏览器进人丨oCalhOSt:7000, 将会运行一个网络应用程序，借此探查转储对象 时堆的内容。
+
+13. 如果使用 -Xprof 标志运行 Java 虚拟机， 就会运行一个基本的剖析器来跟踪那些代 码中经常被调用的方法。剖析信息将发送给 System.out。输出结果中还会显示哪些方法是由 即时编译器编译的。
+
+
+
+# 第8章 泛型程序设计
+
+## 8.1 为什么要使用泛型程序设计
+
+泛型程序设计（Generic programming) 意味着编写的代码可以被很多不同类型的对象所 重用。
+
+### 8.1.1 类型参数的好处
+
+在 Java 中增加范型类之前， 泛型程序设计是用继承实现的。ArrayList 类只维护一个 Object 引用的数组。
+
+这种方式的问题：
+
+- 当获取一个值时必须进行强制类型转换。
+- 这里没有错误检査。可以向数组列表中添加任何类的对象。然而在其他地方，如果将 get 的结果强制类型 转换为 String 类型， 就会产生一个错误。
+
+现在泛型使用类型参数来指示元素类型：
+
+```java
+ArrayList<String> files = new ArrayList<>();
+```
+
+类型参数的魅力在于：使得程序具有更好的可读性和安全性。
+
+### 8.1.2 谁想成为泛型程序员
+
+泛型类的实现通过通配符实现
+
+## 8.2 定义简单泛型类
+
+```java
+public class Pair<T> {
+
+    private T first;
+    private T second;
+
+    public Pair() {
+        first = null;
+        second = null;
+    }
+
+    public T getFirst() {
+        return first;
+    }
+
+    public void setFirst(T first) {
+        this.first = first;
+    }
+
+    public T getSecond() {
+        return second;
+    }
+
+    public void setSecond(T second) {
+        this.second = second;
+    }
+}
+```
+
+Pair 类引人了一个类型变量 T，用尖括号 ( < >) 括起来，并放在类名的后面。泛型类可 以有多个类型变量，用逗号隔开，如`<T,U>`
+
+类定义中的类型变量指定方法的返回类型以及域和局部变量的类型。
+
+> **注释：**类型变量使用大写形式，且比较短， 这是很常见的。在 Java 库中， 使用变量 E 表示集合的元素类型， K 和 V 分别表示表的关键字与值的类型。T ( 需要时还可以用临近的 字母 U 和 S) 表示“ 任意类型”
+
+用具体的类型替换类型变量就可以实例化泛型类型，例如`Pair<String>`
+
+## 8.3 泛型方法
+
+定义泛型方法，类型变量放在修饰符（这里是 public static) 的 后面，返回类型的前面：
+
+```java
+class ArrayAlg{
+    public static<T> T getMiddle(T...a){
+        return a[a.length/2];
+    }
+}
+```
+
+使用，在方法名前加上类型，但一般都不加，和普通方法一样，因为编译器可以推导出来：
+
+```java
+//加类型
+ArrayAlg.<Integer>getMiddle(1,5,2,2);
+//一般情况
+ArrayAlg.getMiddle(1,5,2,2);
+```
+
+> **提示：**如果想知道编译器对一个泛型方法调用最终推断出哪种类型， PetervonderAM 推 荐了这样一个窍门： 有目的地引入一个错误，并研究所产生的错误消息。例如， 看一下 调用 ArrayAlg.getMiddle(“ Hello”，0，null。) 将结果赋给 JButton， 这不可能正确。将会得 到一个措误报告：
+>
+> ![image-20210118163749764](img/image-20210118163749764.png)
+
+## 8.4 类型变量的限定
+
+如果我们需要类型参数T必须为某类的子类或者实现了某接口，就需要限定，如：
+
+```java
+//单个限定
+public static <T extends Comparable> T min(T[] a){...}
+//多个限定
+public static <T extends Comparable & Serializable> T min(T[] a){...}
+```
+
+使用`extends`关键字是因为限定内容可能是类，也可能是接口；
+
+多个类型参数用`,`分隔，多个限定用`&`分隔；
+
+## 8.5 泛型代码和虚拟机
+
+虚拟机没有泛型类型对象—所有对象都属于普通类。在泛型实现的早期版本中， 甚至 能够将使用泛型的程序编译为在 1.0 虚拟机上运行的类文件！ 这个向后兼容性在 Java 泛型开 发的后期被放弃了。
+
+### 8.5.1 类型擦除
+
+无论何时定义一个泛型类型， 都自动提供了一个相应的原始类型 （ raw type )。原始类型 的名字就是删去类型参数后的泛型类型名。擦除（ erased) 类型变M, 并替换为限定类型（无 限定的变量用 Object）。
+
+如`Pair<T>`的原始类型就是用Object替换类型参数。
+
+结果是一个普通的类， 就好像泛型引人 Java 语言之前已经实现的那样。
+
+原始类型用第一个限定的类型变量来替换， 如果没有给定限定就用 Object 替换。例如， 类 Pair 中的类型变量没有显式的限定， 因此， 原始类型用 Object 替换 T。如上多个限定，则T替换为Comparable。
+
+### 8.5.2 翻译泛型表达式
+
+当程序调用泛型方法时，如果擦除返回类型， 编译器插入强制类型转换。
+
+### 8.5.3 翻译泛型方法
+
+使用类型擦除，规则和8.5.1中一致；
+
+泛型擦除方法会遇到问题，编译器使用桥方法解决冲突；
+
+Java 泛型转换的事实：
+
+- 虚拟机中没有泛型，只有普通的类和方法。
+- 所有的类型参数都用它们的限定类型替换。
+- 桥方法被合成来保持多态。
+- 为保持类型安全性，必要时插入强制类型转换。
+
+### 8.5.4 调用遗留代码
+
+设计 Java 泛型类型时，主要目标是允许泛型代码和遗留代码之间能够互操作。
+
+```java
+void setLabelTable(Dictionary table)
+```
+
+Dictionary 是一个原始类型， 因为实现 JSlider 类时 Java 中还不存在泛型。不过，填充字典时， 要使用泛型类型。
+
+不过，编译器会发出一个警告。这个警告对操作不会产生什么影响， 最多考虑一下 JSlider 有可能用 Dictionary 对象做什 么就可以了。在这里十分清楚，JSlider 只阅读这个信息， 因此可以忽略这个警告。
+
+现在，看一个相反的情形， 由一个遗留的类得到一个原始类型的对象。可以将它赋给一 个参数化的类型变量， 当然，这样做会看到一个警告。 例如：
+
+```java
+Dictionary<Integer,Components> labelTable = slider.gerLabelTable(); //warning
+```
+
+这就行了。再看一看警告， 确保标签表已经包含了 Integer 和 Component 对象。 当然， 从来也不会有绝对的承诺。恶意的编码者可能会在滑块中设置不同的 Dictionary。然而， 这 种情况并不会比有泛型之前的情况更糟糕。最差的情况就是程序抛出一个异常。
+
+在查看了警告之后，可以利用注解 （ annotation) 使之消失。注释必须放在生成这个警告 的代码所在的方法之前，如下：
+
+```java
+@SuppressWarnings("unchecked")
+Dictionary<Integer,Components> labelTable = slider.gerLabelTable(); //No warning
+```
+
+## 8.6 约束与局限性
+
+在下面几节中， 将阐述使用 Java 泛型时需要考虑的一些限制。大多数限制都是由类型擦 除引起的。
+
+### 8.6.1 不能用基本类型实例化参数类型
+
+擦除之后， Pair 类含有 Object 类型的域， 而 Object 不能存储 double ，所以**参数类只能用引用类型**
+
+### 8.6.2 运行时类型查询只适用于原始类型
+
+```java
+Pair<String> a = new Pair<>();
+//因为会发生类型擦除，变为原始类型，所以下列会报错类型不合法
+boolean bo = a instanceof Pair<String>;
+//下列合法，且为true
+boolean bo = a instanceof Pair;
+
+//getClass返回原始类型
+a.getClass().getName();		//Pair
+```
+
+### 8.6.3 不能创建参数化类型的数组
+
+```java
+Pair<String>[] table = new Pair<String>[3];		//error
+//声明变量是合法的
+Pair<String>[] table1 = new Pair[3];			//yes
+```
+
+> **注释：**可以声明通配类型的数组， 然后进行类型转换：
+>
+> ```java
+> Pair<String>[] table = (Pair<String>[]) new Pair<?>[3]; 
+> ```
+>
+> 结果将是不安全的。如果在 table[0] 中存储一个 Pair, 然后对 table[0]. getFirst() 调用一个 String 方法， 会得到一个 ClassCastException 异常。
+
+> **提示：**如果需要收集参数化类型对象， 只有一种安全而有效的方法：使用 ArrayList
+>
+> ```java
+> ArrayList<Pair<String>> t2 = new ArrayList<>();
+> ```
+
+### 8.6.4 Varargs警告
+
+向参数个数可变的方法传递一个泛型类型的实例。
+
+```java
+public static <T> void addAll(Collection<T> coll, T...ts){
+    ...
+}
+```
+
+不会报错，只会得到一个警告，有两种方法消除
+
+1. 为包含addAll调用的方法添加注解@SuppressWarnings("unchecked")；
+2. 使用@SafeVarargs直接标注addAll方法；
+
+### 8.6.5 不能实例化类型变量
+
+解决方法有2种：
+
+1. 让调用者提供一个构造器表达式
+
+   ```java
+   Pair<String> p = Pair.makePair(String::new);
+   ```
+
+   makePair 方法接收一个 Supplier，这是一个函数式接口，表示一个无参数而且返回 类型为 T 的函数
+
+   ```java
+   public static <T> Pair<T> makePair(Supplier<T> constr) {
+       return new Pair<>(constr.get(),constr.get());
+   }
+   ```
+
+2. 通过反射调用Class.newInstance方法：
+
+   ```java
+   public static <T> Pair<T> makePair(Class<T> cl) {
+       try {
+           return new Pair<>(cl.newInstance(), cl.newInstance());
+       } catch (Exception e) {
+           return null;
+       }
+   }
+   ```
+
+   可以这样调用：
+
+   ```java
+   Pair<String> p = makePair(String.class);
+   ```
+
+### 8.6.6 不能构造泛型数组
+
+如果数组仅仅作为一个类的私有实例域， 就可以将这个数组声明为 Object[]，并且在获 取元素时进行类型转换。如ArrayList的实现
+
+### 8.6.7 泛型类的静态上下文中类型变量无效
+
+不能在静态域或方法中引用类型变量
+
+### 8.6.8 不能抛出或捕获泛型类的实例
+
+实际上， 甚至泛型类扩展 Throwable 都是不合法的。不过， 在异常规范中使用类型限制变量是允许的。
+
+### 8.6.9 可以消除对受查异常的检查
+
+通过使用泛型类、 擦除和 @SuppressWamings 注解， 就能消除 Java 类型系统的部分基本 限制。
+
+### 8.6.10 注意擦除后的冲突
+
+## 8.7 泛型类型的继承规则
+
+如果A继承自B，但是`Pair<A>`和`Pair<B>`没有任何继承关系；
+
+![image-20210118210240145](img/image-20210118210240145.png)
+
+## 8.8 通配符类型
+
+### 8.8.1 通配符概念
+
+通配符类型中， 允许类型参数变化。 例如， 通配符类型
+
+```java
+Pair<? extends Employee>
+```
+
+表示任何泛型 Pair 类型， 它的类型参数是 Employee 的子类， 如 Pair， 但不是 Pair。
+
+类型 Pair 是 Pair 的子类型（如图 8-3 所示）。
+
+![image-20210118210542954](img/image-20210118210542954.png)
+
+### 8.8.2 通配符的超类型限定
+
+通配符可以指定一个超类型限定：
+
+```java
+? super Manager
+```
+
+![image-20210118212239718](img/image-20210118212239718.png)
+
+**直观地讲，带有超类型限定的通配符可以向泛型对象写人，带有子类型限定的通配符可 以从泛型对象读取。**
+
+### 8.8.3 无限定通配符
+
+![image-20210118213258088](img/image-20210118213258088.png)
+
+### 8.8.4 通配符捕获
+
+整合通配符的问题：
+
+```java
+public class PairTest3 {
+
+    public static void main(String[] args) {
+        Manager ceo = new Manager("Jack", 5000, "CEO");
+        Manager cfo = new Manager("Mick", 3000, "CFO");
+        Pair<Manager> buddies = new Pair<>(ceo, cfo);
+        printBuddies(buddies);
+
+        Manager[] managers = {ceo, cfo};
+
+        Pair<Employee> result = new Pair<>();
+        minmaxSalary(managers, result);
+        System.out.println("first: " + result.getFirst().getName() +
+                ", second: " + result.getSecond().getName());
+
+        maxminSalary(managers, result);
+        System.out.println("first: " + result.getFirst().getName() +
+                ", second: " + result.getSecond().getName());
+    }
+
+    /**
+     * extends限制的通配符
+     * @param pair
+     */
+    public static void printBuddies(Pair<? extends Employee> pair) {
+        Employee first = pair.getFirst();
+        Employee second = pair.getSecond();
+        System.out.println(first.getName() + " and " + second.getName() + " are buddies.");
+    }
+
+    /**
+     * super限制的通配符
+     * @param a
+     * @param result
+     */
+    public static void minmaxSalary(Manager[] a, Pair<? super Manager> result) {
+        if (a.length==0) return;
+        Manager min = a[0];
+        Manager max = a[0];
+        for (Manager manager : a) {
+            if (min.getSalary() > manager.getSalary()) min = manager;
+            if (max.getSalary() < manager.getSalary()) max = manager;
+        }
+        result.setFirst(min);
+        result.setSecond(max);
+    }
+
+    public static void maxminSalary(Manager[] a, Pair<? super Manager> result) {
+        minmaxSalary(a, result);
+        PairAlg.swapHelper(result);
+    }
+}
+
+class PairAlg{
+
+    public static boolean hasNulls(Pair<?> pair) {
+        return pair.getFirst() == null || pair.getSecond() == null;
+    }
+
+    public static <T> void swapHelper(Pair<T> pair) {
+        T t = pair.getFirst();
+        pair.setFirst(pair.getSecond());
+        pair.setSecond(t);
+    }
+}
+```
+
+## 8.9 反射和泛型
+
+反射允许你在运行时分析任意的对象。如果对象是泛型类的实例，关于泛型类型参数则 得不到太多信息，因为它们会被擦除。
+
+### 8.9.1 泛型Class类
+
+现在， Class 类是泛型的。
+
+类型参数十分有用， 这是因为它允许 ClaSS方法的返回类型更加具有针对性。下面 Class 中的方法就使用了类型参数：
+
+![image-20210119112001513](img/image-20210119112001513.png)
+
+newlnstance 方法返回一个实例，这个实例所属的类由默认的构造器获得。它的返回类型 目前被声明为 T， 其类型与 Class 描述的类相同，这样就免除了类型转换。 
+
+如果给定的类型确实是 T 的一个子类型，cast 方法就会返回一个现在声明为类型 T 的对 象， 否则，抛出一个 BadCastException 异常。 
+
+如果这个类不是 enum 类或类型 T 的枚举值的数组， getEnumConstants 方法将返回 null。 
+
+最后， getConstructor 与 getdeclaredConstructor 方 法 返 回 一 个 Constructor 对象。 Constructor 类也已经变成泛型， 以便 newlnstance 方法有一个正确的返回类型。
+
+### 8.9.2 使用`Class<T>`参数进行类型匹配
+
+有时， 匹配泛型方法中的 `Class <T>`参数的类型变量很有实用价值。下面是一 个标准的示例：
+
+```java
+public static <T> Pair<T> makePair(Class<T> c) 
+    throw InstantitationException,IllealAccessException {
+	return new Pair<>(c.newInstance(), c.newInstance());
+}
+```
+
+如果调用
+
+```java
+ makePair(Employee.class);
+```
+
+Employee.class 是类型 Class 的一个对象。makePair 方法的类型参数 T 同 Employee 匹配， 并且编译器可以推断出这个方法将返回一个 Pair 。
+
+### 8.9.3 虚拟机种的泛型类型信息
+
+![image-20210119122600936](img/image-20210119122600936.png)
+![image-20210119122624211](img/image-20210119122624211.png)
+
