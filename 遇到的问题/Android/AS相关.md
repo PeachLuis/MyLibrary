@@ -226,3 +226,44 @@ android {
 }
 ```
 
+# 9. Android 10.0不能运行HttpURLConnection
+
+ Android 9不让客户端通过非https方式访问服务端数据(不允许发送明文http请求)，Google表示，为保证用户数据和设备的安全，针对下一代 Android 系统(Android P) 的应用程序，将要求默认使用加密连接，这意味着 Android P 将禁止 App 使用所有未加密的连接，因此运行 Android P 系统的安卓设备无论是接收或者发送流量，未来都不能明码传输，需要使用下一代(Transport Layer Security)传输层安全协议，而 Android 9.0以下不受影响
+
+因此在Android9.0上 使用HttpUrlConnection进行http请求会出现以下异常：
+
+```
+W/System.err: java.io.IOException: Cleartext HTTP traffic to **** not permitted
+```
+
+**三种解决方法：**
+
+1. App改用https请求
+
+2. targetSdkVersion降到27以下
+
+3. 在项目文件夹建一个子文件夹res/xml，添加network_security_config.xml文件，并保存到res/xml下。
+
+   ```xml
+   <?xml version="1.0" encoding="utf-8"?>
+   <network-security-config>
+       <base-config cleartextTrafficPermitted="true">
+           <trust-anchors>
+               <certificates src="system" />
+           </trust-anchors>
+       </base-config>
+   </network-security-config>
+   ```
+
+   然后在AndroidManifest中引用
+
+   ```xml
+   <application
+       android:networkSecurityConfig="@xml/network_security_config"
+       ...">
+       ...    
+   </application>
+   ```
+
+   
+
