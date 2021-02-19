@@ -267,3 +267,32 @@ W/System.err: java.io.IOException: Cleartext HTTP traffic to **** not permitted
 
    
 
+# 10. 使用百度地图SDK的时，报错java.lang.UnsatisfiedLinkError
+
+原因是导入so库不完整在，我是复制粘贴的，但我也忘记我第一次复制哪里的了。总之，注意以下：
+
+1. 迅雷下载百度地图SDK时可能不完整，在下载之前和之后注意比对一下文件大小，如果不等，则是下载不完全，建议不要使用迅雷下载百度地图SDK
+2. 也可能是Android Studio中复制粘贴，导致文件复制不完全，如果出现此异常，则比对一下so库中的内容是否缺少，不行的话建议在文件夹中复制粘贴百度地图SDK
+
+# 11. 在RecyclerView单个item的点击事件中getAdapterPostion返回-1
+
+原因：在onCreateViewHolder方法中，返回值之前写成
+
+```java
+return new ViewHolder(view)
+```
+
+但是添加了点击事件之后，我们自己已经创建了一个ViewHolder，并传入了view，所以需要直接返回我们创建的这个holder，如果还是返回new的ViewHolder，则在我们创建的ViewHolder的点击事件中就拿不到Position
+
+解决：
+
+```java
+final ViewHolder holder = new ViewHolder(view);
+...
+return holder;
+```
+
+# **12. 研究新的theme和旧的theme的区别与联系
+
+# **13. 详解Context
+
