@@ -137,7 +137,7 @@ public class Student
    2. double（64位8字节）默认：0.0d或省略0.0 （最常用）
 
 3. 1字符：
-   1. char（8位1字节）默认' '，为空
+   1. char（16位2字节）默认' '，为空，因为采用unicode编码
 4. 1布尔
    1. boolean（只有true和false两种取值）默认为false
 
@@ -629,7 +629,7 @@ public class Student
 注意：
 
 1. 特别注意break的书写，如果不添加break，程序就会一直执行后面的case语句，例如，都不写break，如果输入1，则程序会执行case1，2，3，default的语句内容。
-2. case标签可以是**char、byte、short或int的常量表达式或者其包装类，枚举常量**，从java SE 7 开始，还可以是字符串字面量，其他的数据类型不支持，**所以浮点类型也是不支持的**；
+2. case标签可以是**char、byte、short或int的常量表达式或者其包装类，枚举常量**，从java SE 7 开始，还可以是字符串字面量String，其他的数据类型不支持，**所以浮点类型也是不支持的**；
 
 ## 3.9 大数值
 

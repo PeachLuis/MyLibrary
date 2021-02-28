@@ -296,3 +296,27 @@ return holder;
 
 # **13. 详解Context
 
+# 14. Android Studio4.0 中Button的background设置图片无法正常显示，设置颜色也对不上
+
+如果是设置Button的background为某种颜色不生效，或者设置图片但不显示图片，则修改theme.xml如下可以达到效果，即添加Bridge：
+
+```xml
+    <style name="Theme.CoolWeather" parent="Theme.MaterialComponents.DayNight.NoActionBar.Bridge">
+
+```
+
+如果是在Android Studio下下载的vector颜色不对，可以修改android:tint属性
+
+```xml
+<vector android:height="24dp" android:tint="#FFFFFF"
+    android:viewportHeight="24" android:viewportWidth="24"
+    android:width="24dp" xmlns:android="http://schemas.android.com/apk/res/android">
+    <path android:fillColor="@android:color/white" android:pathData="M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z"/>
+</vector>
+```
+
+# 15. 酷欧天气加载城市信息一直显示加载中
+
+原因：不认真写代码
+
+在Utility类中，每一个handle方法中，没有写返回true
