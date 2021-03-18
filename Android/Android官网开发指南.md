@@ -35,7 +35,7 @@
    }
    ```
 
-3. 创建自己的Fragment类，使其继承自Fragment，在构造函数中传入该Fragment的layout文件（这里不同于第一行代码中的在onCreateView方法传入layout）
+3. 创建自己的Fragment类，使其继承自Fragment，在构造函数中传入该Fragment的layout位置（这里不同于第一行代码中的在onCreateView方法传入layout）
 
    ```java
    class ExampleFragment extends Fragment {
@@ -44,3 +44,9 @@
        }
    }
    ```
+
+   > Fragment库还提供了特定的Fragment类：
+   >
+   > 1. DialogFragment：代替在Activity中的使用Dialog helper创建DialogActivity
+   > 2. PreferenceFragmentCompat
+   >    Displays a hierarchy of Preference objects as a list. You can use PreferenceFragmentCompat to create a settings screen for your app.
